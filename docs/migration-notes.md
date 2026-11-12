@@ -9,7 +9,7 @@
 |---|---|---|
 | `src/util/util_config.py` | `internal/config` | 结构体重设计，YAML 为唯一真实来源，附带 schema 元数据 |
 | `src/util/util_logging.py` | `internal/logx` | `slog` 多 Handler 扇出 + 轮转文件 + 环形缓冲 + Wails 事件 |
-| `src/util/util_database.py` | `internal/db` | 新库 `app.db`；修复原版 `music_url` 只写内存的缺陷 |
+| `src/util/util_database.py` | `internal/store` | 进程内 go-cache 存储（无数据库）；原版 `music_url` 只写内存，本版同为内存但统一由 store 管理 |
 | `src/util/util_commons.py` | `internal/music/filename.go`、`indexes.go`、`internal/httpclient/retry.go` | 清洗、编号解析、限流 |
 | `src/util/util_music_api.py` | `internal/api/netease.go` | `/Song_V1`、`/Album`、`/Playlist`；`/Search` 原版未接入，本版作为搜索页启用 |
 | `src/tool/tool_next_music_v2.py` | `internal/api/nextmusic.go` | 明文 JSON + Chrome TLS 指纹降级 |
@@ -74,7 +74,7 @@ form：`url`(歌曲 ID)、`level`、`type=json`。
 
 ## 5. 主动修正的源项目缺陷
 
-1. `music_url` 缓存原来只写进程内字典，Go 版真正落 SQLite。
+1. `music_url` 缓存与原版同为进程内存储，Go 版统一收敛到 `internal/store`（go-cache）。
 2. OO Music 选低音质时扩展名/日志音质与播放地址不匹配，Go 版按实际选中的音质推断扩展名。
 3. 日志原来每启动一个文件且无轮转，Go 版用 `lumberjack` 按大小/天数轮转。
 4. `config.yml` 中的死配置在新 `config.yaml` 中重新设计，全部字段都真实生效。
@@ -82,4 +82,4 @@ form：`url`(歌曲 ID)、`level`、`type=json`。
 
 ## 6. 配置差异
 
-新版使用 `config.yaml`（非 `config.yml`），数据库使用 `app.db`（非 `cloud-music.db`），均不兼容旧数据，由 `internal/config/schema.go` 提供可视化表单元数据。
+新版使用 `config.yaml`（非 `config.yml`）；不使用数据库，偏好/缓存/任务历史存于进程内（`internal/store`，go-cache），其中上次下载偏好与限流时间戳持久化到 `state.yaml`。

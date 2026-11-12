@@ -12,7 +12,7 @@ import (
 )
 
 func (s *Service) musicService() *music.Service {
-	return music.New(s.cfg(), s.deps.Root, s.httpClient(), s.deps.Logger, s.deps.DB)
+	return music.New(s.cfg(), s.deps.Root, s.httpClient(), s.deps.Logger, s.deps.Cache)
 }
 
 // Download 启动一个异步下载任务，立即返回 task_id，进度通过 task:progress 事件推送。

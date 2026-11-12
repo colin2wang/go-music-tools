@@ -1,5 +1,7 @@
 import type {
   AppInfo,
+  CacheEntry,
+  CacheRegionStat,
   ConfigGroup,
   ConfigValues,
   DownloadRequest,
@@ -90,6 +92,11 @@ export const bindings = {
   ooQualities: (keyword: string, songMid: string) => call<QualityOption[]>('OOQualities', keyword, songMid),
   ooDownload: (req: OODownloadRequest) => call<string>('OODownload', req),
   ooBatchDownload: (keyword: string, quality: string) => call<string>('OOBatchDownload', keyword, quality),
+
+  // 缓存检视
+  getCacheStats: () => call<CacheRegionStat[]>('GetCacheStats'),
+  listCache: (region: string) => call<CacheEntry[]>('ListCache', region),
+  clearCache: (region: string, key: string) => call<number>('ClearCache', region, key),
 
   // 音乐库工具
   runLibraryFix: (req: LibraryFixRequest) => call<string>('RunLibraryFix', req),

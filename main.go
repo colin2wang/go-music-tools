@@ -12,8 +12,8 @@ import (
 
 	"go-music-tools/internal/bindings"
 	"go-music-tools/internal/config"
-	"go-music-tools/internal/db"
 	"go-music-tools/internal/logx"
+	storepkg "go-music-tools/internal/store"
 )
 
 //go:embed all:frontend/dist
@@ -39,17 +39,11 @@ func run() error {
 	}
 	defer hub.Close()
 
-	database, err := db.Open(filepath.Join(root, "app.db"))
-	if err != nil {
-		return fmt.Errorf("初始化数据库: %w", err)
-	}
-	defer database.Close()
-
 	svc, err := bindings.NewService(bindings.Deps{
 		Root:   root,
 		Config: store,
 		Logs:   hub,
-		DB:     database,
+		Cache:  storepkg.New(filepath.Join(root, "state.yaml")),
 		Logger: hub.Logger(),
 	})
 	if err != nil {
@@ -57,7 +51,7 @@ func run() error {
 	}
 	defer svc.Close()
 
-	app := NewApp(svc, hub, database)
+	app := NewApp(svc, hub)
 
 	return wails.Run(&options.App{
 		Title:     "Music Tools · 音乐工作台",

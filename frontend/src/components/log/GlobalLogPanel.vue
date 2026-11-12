@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Terminal, Wifi } from 'lucide-vue-next'
 import { useLogStore } from '@/stores/logs'
 import LogToolbar from './LogToolbar.vue'
 import LogRow from './LogRow.vue'
 
+const { t } = useI18n()
 const props = defineProps<{ left: number; height: number }>()
 const logs = useLogStore()
 const ROW_HEIGHT = 24
@@ -90,24 +92,24 @@ onBeforeUnmount(() => {
   >
     <div
       class="absolute left-0 right-0 top-0 h-1 cursor-ns-resize bg-transparent hover:bg-[rgba(139,124,246,0.5)]"
-      title="拖动调整日志窗口高度"
+      :title="t('log.dragHint')"
       @mousedown="beginDrag"
     />
 
     <div class="flex h-[38px] shrink-0 items-center gap-3 border-b border-[var(--border-soft)] px-3">
       <div class="flex items-center gap-2">
         <Terminal :size="15" class="text-[var(--brand-400)]" />
-        <span class="text-[12px] font-semibold">全局日志</span>
+        <span class="text-[12px] font-semibold">{{ t('log.title') }}</span>
         <span class="rounded-full bg-[rgba(108,92,231,0.16)] px-2 py-0.5 text-[10px] text-[var(--brand-400)]">
-          {{ logs.filtered.length }} 行
+          {{ t('log.lines', { n: logs.filtered.length }) }}
         </span>
         <span v-if="logs.errorCount" class="rounded-full bg-[rgba(239,68,68,0.14)] px-2 py-0.5 text-[10px] text-[var(--err)]">
-          {{ logs.errorCount }} 错误
+          {{ t('log.errorBadge', { n: logs.errorCount }) }}
         </span>
       </div>
       <div class="ml-auto flex items-center gap-3">
         <span class="hidden items-center gap-1 text-[10px] text-[var(--text-muted)] sm:flex">
-          <Wifi :size="11" /> {{ logs.rate }} 行/秒
+          <Wifi :size="11" /> {{ t('log.rate', { n: logs.rate }) }}
         </span>
         <LogToolbar v-if="logs.expanded" />
         <button
@@ -116,7 +118,7 @@ onBeforeUnmount(() => {
           class="ghost-button flex h-7 items-center gap-1 px-2 text-[11px]"
           @click="logs.setExpanded(true)"
         >
-          展开日志
+          {{ t('log.expand') }}
         </button>
       </div>
     </div>
@@ -131,7 +133,7 @@ onBeforeUnmount(() => {
       <LogRow v-for="(entry, index) in visible" :key="startIndex + index + entry.time + entry.message" :entry="entry" />
       <div :style="{ height: bottomSpace + 'px' }" />
       <div v-if="filtered.length === 0" class="flex h-full items-center justify-center text-[12px] text-[var(--text-muted)]">
-        暂无匹配日志。下载或修补任务启动后，日志会实时出现在这里。
+        {{ t('log.noMatch') }}
       </div>
     </div>
   </section>

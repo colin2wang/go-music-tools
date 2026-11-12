@@ -6,7 +6,6 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"go-music-tools/internal/bindings"
-	"go-music-tools/internal/db"
 	"go-music-tools/internal/logx"
 )
 
@@ -15,14 +14,13 @@ import (
 type App struct {
 	*bindings.Service
 
-	svc      *bindings.Service
-	hub      *logx.Hub
-	database *db.DB
-	ctx      context.Context
+	svc *bindings.Service
+	hub *logx.Hub
+	ctx context.Context
 }
 
-func NewApp(svc *bindings.Service, hub *logx.Hub, database *db.DB) *App {
-	return &App{Service: svc, svc: svc, hub: hub, database: database}
+func NewApp(svc *bindings.Service, hub *logx.Hub) *App {
+	return &App{Service: svc, svc: svc, hub: hub}
 }
 
 func (a *App) startup(ctx context.Context) {

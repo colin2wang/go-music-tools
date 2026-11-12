@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { ConfigGroup } from '@/types'
 import ConfigField from './ConfigField.vue'
+
+const { t, te } = useI18n()
 
 const props = defineProps<{
   group: ConfigGroup
@@ -13,6 +16,16 @@ const emit = defineEmits<{
   (e: 'browse', key: string): void
 }>()
 
+// 后端 schema 自带中文文案；语言包中有对应键时优先使用，缺失时回退后端文本。
+function groupLabel(): string {
+  const key = `schema.group.${props.group.key}`
+  return te(key) ? t(key) : props.group.label
+}
+function groupDesc(): string {
+  const key = `schema.groupDesc.${props.group.key}`
+  return te(key) ? t(key) : props.group.description
+}
+
 function errorFor(key: string): string {
   return props.errors[`${props.group.key}.${key}`] ?? ''
 }
@@ -23,8 +36,8 @@ function errorFor(key: string): string {
     <div class="mb-4 flex items-start gap-3">
       <div class="mt-0.5 h-8 w-1 rounded-full" style="background: var(--gradient-brand)" />
       <div>
-        <h2 class="section-title">{{ group.label }}</h2>
-        <p class="mt-1 text-[12px] text-[var(--text-muted)]">{{ group.description }}</p>
+        <h2 class="section-title">{{ groupLabel() }}</h2>
+        <p class="mt-1 text-[12px] text-[var(--text-muted)]">{{ groupDesc() }}</p>
       </div>
       <span class="ml-auto rounded-full border border-[var(--border-soft)] px-2.5 py-1 font-mono text-[10.5px] text-[var(--text-muted)]">
         {{ group.key }}
@@ -36,6 +49,7 @@ function errorFor(key: string): string {
         v-for="field in group.fields"
         :key="field.key"
         :field="field"
+        :group-key="group.key"
         :value="values[field.key] ?? field.default"
         :error="errorFor(field.key)"
         @update="(v) => emit('update', field.key, v)"

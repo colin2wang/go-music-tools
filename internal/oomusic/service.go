@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 
@@ -76,9 +77,12 @@ func (s *Service) Search(ctx context.Context, keyword string) ([]model.OOSong, e
 	if err != nil {
 		return nil, err
 	}
-	s.mu.Lock()
-	s.searchCache[keyword] = songs
-	s.mu.Unlock()
+	// 空结果不入缓存：避免代理偶发返回空列表后被永久缓存，导致后续搜索始终为 0。
+	if len(songs) > 0 {
+		s.mu.Lock()
+		s.searchCache[keyword] = songs
+		s.mu.Unlock()
+	}
 	if s.Logger != nil {
 		s.Logger.Info("OO Music 搜索完成", "keyword", keyword, "count", len(songs))
 	}
@@ -222,6 +226,40 @@ func (s *Service) BatchDownload(ctx context.Context, keyword, quality string, r 
 		}
 	}
 	return ctx.Err()
+}
+
+// SearchCacheEntry 是搜索缓存的单条检视信息。
+type SearchCacheEntry struct {
+	Keyword string `json:"keyword"`
+	Count   int    `json:"count"`
+}
+
+// ListSearchCache 返回全部搜索缓存条目，按关键词排序。
+func (s *Service) ListSearchCache() []SearchCacheEntry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]SearchCacheEntry, 0, len(s.searchCache))
+	for k, v := range s.searchCache {
+		out = append(out, SearchCacheEntry{Keyword: k, Count: len(v)})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Keyword < out[j].Keyword })
+	return out
+}
+
+// ClearSearchCache 清空全部搜索缓存，或仅删除指定关键词；返回删除的条目数。
+func (s *Service) ClearSearchCache(keyword string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if keyword == "" {
+		n := len(s.searchCache)
+		s.searchCache = make(map[string][]model.OOSong)
+		return n
+	}
+	if _, ok := s.searchCache[keyword]; !ok {
+		return 0
+	}
+	delete(s.searchCache, keyword)
+	return 1
 }
 
 func (s *Service) warn(message string, err error) {

@@ -16,7 +16,7 @@ import (
 	"go-music-tools/internal/model"
 )
 
-// MusicInfoCache 由 internal/db.DB 实现，避免 api 包直接依赖数据库。
+// MusicInfoCache 由 internal/store.Store 实现，避免 api 包直接依赖具体存储。
 type MusicInfoCache interface {
 	GetMusicInfo(musicID string) (*model.MusicInfo, bool, error)
 	UpsertMusicInfo(info model.MusicInfo) error

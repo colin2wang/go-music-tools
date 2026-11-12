@@ -15,7 +15,7 @@ import (
 	"go-music-tools/internal/task"
 )
 
-// Store 由 internal/db.DB 实现，同时承担元数据限流时间戳与备用通道缓存。
+// Store 由 internal/store.Store 实现，同时承担元数据限流时间戳与备用通道缓存。
 type Store interface {
 	httpclient.MetadataIntervalStore
 	api.MusicInfoCache

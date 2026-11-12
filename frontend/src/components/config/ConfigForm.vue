@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Save, RotateCcw, RefreshCw, FileText, CheckCircle2, AlertCircle, Loader2, Download, Upload } from 'lucide-vue-next'
 import { useConfigStore } from '@/stores/config'
 import { bindings } from '@/api/bindings'
 import ConfigSection from './ConfigSection.vue'
 
+const { t } = useI18n()
 const config = useConfigStore()
 const notice = ref<{ ok: boolean; text: string } | null>(null)
 
@@ -31,23 +33,23 @@ function update(group: string, key: string, value: string | number | boolean) {
 }
 
 async function browse(group: string, key: string) {
-  const path = await bindings.selectDirectory(`选择${group}.${key} 目录`)
+  const path = await bindings.selectDirectory(t('settings.chooseDir', { path: `${group}.${key}` }))
   if (path) config.setField(group, key, path)
 }
 
 async function save() {
   const ok = await config.save()
-  flash(ok, ok ? '配置已保存并立即生效' : `有 ${config.errorCount} 个字段需要修正`)
+  flash(ok, ok ? t('settings.saved') : t('settings.invalid', { n: config.errorCount }))
 }
 
 async function reload() {
   await config.reload()
-  flash(true, '已从 config.yaml 重新加载')
+  flash(true, t('settings.reloaded'))
 }
 
 async function reset() {
   await config.reset()
-  flash(true, '已恢复全部默认值')
+  flash(true, t('settings.resetDone'))
 }
 
 function errorText(err: unknown): string {
@@ -60,7 +62,7 @@ async function exportConfig() {
     flash(false, errorText(err))
     return null
   })
-  if (path) flash(true, `已导出到 ${path}`)
+  if (path) flash(true, t('settings.exported', { path }))
 }
 
 async function importConfig() {
@@ -71,7 +73,7 @@ async function importConfig() {
   })
   if (!path) return
   await config.refresh()
-  flash(true, `已从 ${path} 导入并立即生效`)
+  flash(true, t('settings.imported', { path }))
 }
 </script>
 
@@ -80,15 +82,15 @@ async function importConfig() {
     <div class="glass-panel sticky top-0 z-10 flex flex-wrap items-center gap-3 p-4">
       <div class="mr-auto">
         <div class="flex items-center gap-2 text-[13px] font-semibold">
-          配置编辑
+          {{ t('settings.editTitle') }}
           <span
             v-if="config.dirty"
             class="rounded-full bg-[rgba(245,158,11,0.14)] px-2 py-0.5 text-[10.5px] font-normal text-[var(--warn)]"
           >
-            {{ changedCount }} 项未保存
+            {{ t('settings.unsaved', { n: changedCount }) }}
           </span>
           <span v-else class="rounded-full bg-[rgba(34,197,94,0.12)] px-2 py-0.5 text-[10.5px] font-normal text-[var(--ok)]">
-            已是最新
+            {{ t('settings.upToDate') }}
           </span>
         </div>
         <p class="mt-1 font-mono text-[11px] text-[var(--text-muted)]">{{ config.appInfo?.config_path }}</p>
@@ -101,24 +103,24 @@ async function importConfig() {
       </span>
 
       <button type="button" class="ghost-button flex h-9 items-center gap-1.5 px-3 text-[12px]" @click="reload">
-        <RefreshCw :size="14" /> 重新加载
+        <RefreshCw :size="14" /> {{ t('settings.reloadBtn') }}
       </button>
       <button type="button" class="ghost-button flex h-9 items-center gap-1.5 px-3 text-[12px]" @click="reset">
-        <RotateCcw :size="14" /> 恢复默认
+        <RotateCcw :size="14" /> {{ t('settings.resetBtn') }}
       </button>
       <button type="button" class="ghost-button flex h-9 items-center gap-1.5 px-3 text-[12px]" @click="config.openFile()">
-        <FileText :size="14" /> 打开文件
+        <FileText :size="14" /> {{ t('settings.openFile') }}
       </button>
       <button type="button" class="ghost-button flex h-9 items-center gap-1.5 px-3 text-[12px]" @click="exportConfig">
-        <Download :size="14" /> 导出
+        <Download :size="14" /> {{ t('settings.exportBtn') }}
       </button>
       <button type="button" class="ghost-button flex h-9 items-center gap-1.5 px-3 text-[12px]" @click="importConfig">
-        <Upload :size="14" /> 导入
+        <Upload :size="14" /> {{ t('settings.importBtn') }}
       </button>
       <button type="button" class="brand-button flex h-9 items-center gap-1.5 px-4 text-[12px]" :disabled="config.saving" @click="save">
         <Loader2 v-if="config.saving" :size="14" class="animate-spin" />
         <Save v-else :size="14" />
-        保存配置
+        {{ t('settings.save') }}
       </button>
     </div>
 
@@ -126,7 +128,7 @@ async function importConfig() {
       v-if="config.errorCount > 0"
       class="glass-panel border-[rgba(239,68,68,0.4)] p-4 text-[12px] text-[var(--err)]"
     >
-      <div class="mb-2 flex items-center gap-2 font-semibold"><AlertCircle :size="14" /> 字段校验未通过</div>
+      <div class="mb-2 flex items-center gap-2 font-semibold"><AlertCircle :size="14" /> {{ t('settings.validationFailed') }}</div>
       <ul class="space-y-1">
         <li v-for="(message, path) in config.errors" :key="path" class="font-mono text-[11px]">
           {{ path }} — {{ message }}

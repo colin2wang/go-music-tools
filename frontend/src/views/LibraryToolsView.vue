@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, type Component } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   Wrench, FileText, Image, Users, Database, Play, Square, FolderTree,
   ChevronDown, ChevronRight, AlertCircle, Clock3, CheckCircle2, XCircle,
@@ -14,20 +15,22 @@ import { LIBRARY_TOOLS, type LibraryFixKind, type TaskItemResult } from '@/types
 
 type OptionKey = 'only_missing' | 'force' | 'recursive' | 'continue_on_error'
 
+const { t } = useI18n()
+
 const toolIcons: Record<LibraryFixKind, Component> = {
   lyrics: FileText, cover: Image, artists: Users, metadata: Database,
 }
-const toolRisks: Record<LibraryFixKind, string> = {
-  lyrics: '改写内嵌歌词与 CMUSIC_ID，旧 .lrc 归档到 .delete/',
-  cover: '低分辨率封面会被替换，原文件先备份',
-  artists: '按序号格式重命名音频及同名的 .lrc / 封面文件',
-  metadata: '仅补全缺失字段，不覆盖已有标签',
+const toolRiskKey: Record<LibraryFixKind, string> = {
+  lyrics: 'library.toolLyricsRisk',
+  cover: 'library.toolCoverRisk',
+  artists: 'library.toolArtistsRisk',
+  metadata: 'library.toolMetadataRisk',
 }
-const optionFields: { key: OptionKey; label: string; hint: string }[] = [
-  { key: 'only_missing', label: '仅修缺失项', hint: '已有完整标签的文件直接跳过' },
-  { key: 'force', label: '强制重下封面', hint: '忽略分辨率阈值，重新获取封面' },
-  { key: 'recursive', label: '递归子目录', hint: '同时处理专辑目录内的嵌套目录' },
-  { key: 'continue_on_error', label: '出错继续', hint: '单个目录失败不中断整批任务' },
+const optionFields: { key: OptionKey; labelKey: string; hintKey: string }[] = [
+  { key: 'only_missing', labelKey: 'library.optOnlyMissing', hintKey: 'library.optOnlyMissingHint' },
+  { key: 'force', labelKey: 'library.optForce', hintKey: 'library.optForceHint' },
+  { key: 'recursive', labelKey: 'library.optRecursive', hintKey: 'library.optRecursiveHint' },
+  { key: 'continue_on_error', labelKey: 'library.optContinue', hintKey: 'library.optContinueHint' },
 ]
 
 const config = useConfigStore()
@@ -64,9 +67,9 @@ function fail(err: unknown): null {
 }
 
 function statusMeta(status: string): { label: string; color: string; icon: Component } {
-  if (status === 'failed') return { label: '失败', color: 'text-[var(--err)] bg-[rgba(239,68,68,0.12)]', icon: XCircle }
-  if (status === 'skipped') return { label: '跳过', color: 'text-[var(--warn)] bg-[rgba(245,158,11,0.12)]', icon: AlertCircle }
-  return { label: '完成', color: 'text-[var(--ok)] bg-[rgba(34,197,94,0.12)]', icon: CheckCircle2 }
+  if (status === 'failed') return { label: t('common.failed'), color: 'text-[var(--err)] bg-[rgba(239,68,68,0.12)]', icon: XCircle }
+  if (status === 'skipped') return { label: t('common.skipped'), color: 'text-[var(--warn)] bg-[rgba(245,158,11,0.12)]', icon: AlertCircle }
+  return { label: t('common.done'), color: 'text-[var(--ok)] bg-[rgba(34,197,94,0.12)]', icon: CheckCircle2 }
 }
 
 function elapsed(row: TaskItemResult): string {
@@ -80,8 +83,8 @@ function toggle(name: string) {
 }
 
 async function start() {
-  if (!directory.value.trim()) { flash(false, '请先选择音乐库根目录'); return }
-  if (!folders.value.length) { flash(false, '所选目录下没有一级专辑目录'); return }
+  if (!directory.value.trim()) { flash(false, t('library.needRoot')); return }
+  if (!folders.value.length) { flash(false, t('library.noSubdirs')); return }
   starting.value = true
   expanded.value = null
   tasks.beginOptimistic(`library:${kind.value}`, folders.value.length)
@@ -90,7 +93,7 @@ async function start() {
   }).catch(fail)
   starting.value = false
   if (!id) { tasks.running = false; return }
-  flash(true, `${currentTool.value.title} 已启动，共 ${folders.value.length} 个目录`)
+  flash(true, t('library.started', { tool: currentTool.value.title, n: folders.value.length }))
   await tasks.refresh()
 }
 
@@ -107,11 +110,11 @@ async function openDirectory() {
         <div class="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-300)]">
           <Wrench :size="13" /> Library maintenance
         </div>
-        <h1>音乐库工具</h1>
-        <p class="muted mt-1.5 text-[12.5px]">对存量专辑目录批量修补歌词、封面、艺术家与元数据；逐目录上报结果，出错不中断。</p>
+        <h1>{{ t('library.title') }}</h1>
+        <p class="muted mt-1.5 text-[12.5px]">{{ t('library.subtitle') }}</p>
       </div>
       <button type="button" class="ghost-button ml-auto flex h-9 items-center gap-2 px-3 text-[12px]" :disabled="!directory" @click="openDirectory">
-        <FolderOpen :size="14" /> 打开该目录
+        <FolderOpen :size="14" /> {{ t('library.openDir') }}
       </button>
     </header>
 
@@ -121,8 +124,8 @@ async function openDirectory() {
       <div class="space-y-4">
         <section class="glass-panel p-4">
           <div class="mb-3 flex items-center gap-2 text-[13px] font-semibold">
-            <Wrench :size="14" class="text-[var(--brand-300)]" /> 选择修补工具
-            <span class="ml-auto font-mono text-[10.5px] font-normal text-[var(--text-muted)]">4 条流程</span>
+            <Wrench :size="14" class="text-[var(--brand-300)]" /> {{ t('library.chooseTool') }}
+            <span class="ml-auto font-mono text-[10.5px] font-normal text-[var(--text-muted)]">{{ t('library.flows', { n: 4 }) }}</span>
           </div>
           <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             <button v-for="tool in LIBRARY_TOOLS" :key="tool.kind" type="button"
@@ -140,7 +143,7 @@ async function openDirectory() {
                 <div class="text-[12.5px] font-semibold">{{ tool.title }}</div>
                 <div class="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">{{ tool.description }}</div>
                 <div class="mt-2 flex items-start gap-1 text-[10.5px] leading-relaxed text-[var(--warn)]">
-                  <ShieldAlert :size="11" class="mt-0.5 shrink-0" /> {{ toolRisks[tool.kind] }}
+                  <ShieldAlert :size="11" class="mt-0.5 shrink-0" /> {{ t(toolRiskKey[tool.kind]) }}
                 </div>
               </div>
             </button>
@@ -149,20 +152,20 @@ async function openDirectory() {
 
         <section class="glass-panel p-4">
           <div class="mb-3 flex items-center gap-2 text-[13px] font-semibold">
-            <FolderTree :size="14" class="text-[var(--brand-300)]" /> 逐目录进度
+            <FolderTree :size="14" class="text-[var(--brand-300)]" /> {{ t('library.progress') }}
             <span class="ml-auto font-mono text-[10.5px] font-normal text-[var(--text-muted)]">
-              {{ rows.length }} / {{ folders.length }} 已处理
+              {{ t('library.processed', { a: rows.length, b: folders.length }) }}
             </span>
           </div>
 
           <div v-if="!folders.length && !rows.length" class="flex flex-col items-center gap-2 py-10 text-center">
             <FolderTree :size="26" class="text-[var(--text-muted)]" />
-            <p class="text-[12px] text-[var(--text-secondary)]">选择根目录后可预览待处理的专辑目录</p>
+            <p class="text-[12px] text-[var(--text-secondary)]">{{ t('library.previewHint') }}</p>
           </div>
 
           <div v-else class="max-h-[300px] overflow-y-auto rounded-xl border border-[var(--border-soft)]">
             <div class="grid grid-cols-[minmax(0,1fr)_64px_64px_28px] gap-2 border-b border-[var(--border-soft)] bg-[rgba(11,16,32,0.4)] px-3 py-2 text-[10.5px] text-[var(--text-muted)]">
-              <span>专辑目录</span><span>状态</span><span>耗时</span><span />
+              <span>{{ t('library.colDir') }}</span><span>{{ t('library.colStatus') }}</span><span>{{ t('library.colElapsed') }}</span><span />
             </div>
             <template v-if="rows.length">
               <template v-for="(row, index) in rows" :key="index + row.name">
@@ -175,7 +178,7 @@ async function openDirectory() {
                   <component :is="expanded === row.name ? ChevronDown : ChevronRight" :size="12" class="text-[var(--text-muted)]" />
                 </button>
                 <div v-if="expanded === row.name" class="border-b border-[var(--border-soft)] bg-[rgba(11,16,32,0.55)] px-3 py-2 font-mono text-[10.5px] leading-relaxed text-[var(--text-secondary)]">
-                  {{ row.message || '无附加说明' }}
+                  {{ row.message || t('library.noNote') }}
                 </div>
               </template>
             </template>
@@ -183,7 +186,7 @@ async function openDirectory() {
               <div v-for="(name, index) in previewRows" :key="index + name"
                 class="grid grid-cols-[minmax(0,1fr)_64px_64px_28px] items-center gap-2 border-b border-[var(--border-soft)] px-3 py-2 text-[11.5px] last:border-b-0">
                 <span class="truncate" :title="name">{{ name }}</span>
-                <span class="rounded-md bg-[rgba(148,163,184,0.1)] px-1.5 py-0.5 text-center text-[10px] text-[var(--text-muted)]">待处理</span>
+                <span class="rounded-md bg-[rgba(148,163,184,0.1)] px-1.5 py-0.5 text-center text-[10px] text-[var(--text-muted)]">{{ t('common.pending') }}</span>
                 <span class="font-mono text-[10.5px] text-[var(--text-muted)]">—</span>
                 <span />
               </div>
@@ -194,14 +197,14 @@ async function openDirectory() {
 
       <div class="space-y-4">
         <section class="glass-panel p-4">
-          <div class="mb-3 text-[13px] font-semibold">执行参数</div>
+          <div class="mb-3 text-[13px] font-semibold">{{ t('library.params') }}</div>
           <div class="space-y-2.5">
             <label v-for="field in optionFields" :key="field.key"
               class="flex cursor-pointer items-start gap-2.5 rounded-xl border border-[var(--border-soft)] bg-[rgba(11,16,32,0.4)] px-3 py-2.5 transition-colors hover:border-[var(--border-strong)]">
               <input v-model="options[field.key]" type="checkbox" class="mt-0.5 h-3.5 w-3.5 cursor-pointer accent-[#6C5CE7]" />
               <span class="min-w-0">
-                <span class="block text-[12px] font-medium">{{ field.label }}</span>
-                <span class="mt-0.5 block text-[10.5px] leading-relaxed text-[var(--text-muted)]">{{ field.hint }}</span>
+                <span class="block text-[12px] font-medium">{{ t(field.labelKey) }}</span>
+                <span class="mt-0.5 block text-[10.5px] leading-relaxed text-[var(--text-muted)]">{{ t(field.hintKey) }}</span>
               </span>
             </label>
           </div>
@@ -209,28 +212,28 @@ async function openDirectory() {
             <button type="button" class="brand-button flex h-10 w-full items-center justify-center gap-2 text-[12.5px]"
               :disabled="starting || tasks.running || !folders.length" @click="start">
               <Loader2 v-if="starting" :size="15" class="animate-spin" /><Play v-else :size="15" />
-              执行{{ currentTool.title }}
+              {{ t('library.run', { tool: currentTool.title }) }}
             </button>
             <button type="button" class="ghost-button flex h-9 w-full items-center justify-center gap-2 text-[11.5px] text-[var(--err)]"
               :disabled="!tasks.running" @click="tasks.cancel()">
-              <Square :size="12" /> 取消当前任务
+              <Square :size="12" /> {{ t('library.cancelTask') }}
             </button>
             <p v-if="notice" class="text-[11px] leading-relaxed" :class="notice.ok ? 'text-[var(--ok)]' : 'text-[var(--err)]'">{{ notice.text }}</p>
             <p v-else class="text-[11px] leading-relaxed text-[var(--text-muted)]">
-              修补以 album_info.txt 中的专辑 ID 为依据，已处理的专辑依靠 CMUSIC_ID 自动跳过。
+              {{ t('library.hint') }}
             </p>
           </div>
         </section>
 
         <section class="glass-panel p-4">
-          <div class="mb-2 text-[12.5px] font-semibold">本次范围</div>
+          <div class="mb-2 text-[12.5px] font-semibold">{{ t('library.scope') }}</div>
           <div class="grid grid-cols-2 gap-2 text-[11px]">
             <div class="rounded-xl border border-[var(--border-soft)] p-2.5">
-              <div class="text-[10.5px] text-[var(--text-muted)]">一级目录</div>
+              <div class="text-[10.5px] text-[var(--text-muted)]">{{ t('library.dirs') }}</div>
               <div class="mt-0.5 text-[18px] font-semibold">{{ folders.length }}</div>
             </div>
             <div class="rounded-xl border border-[var(--border-soft)] p-2.5">
-              <div class="text-[10.5px] text-[var(--text-muted)]">失败目录</div>
+              <div class="text-[10.5px] text-[var(--text-muted)]">{{ t('library.failedDirs') }}</div>
               <div class="mt-0.5 text-[18px] font-semibold text-[var(--err)]">{{ tasks.progress?.failed ?? 0 }}</div>
             </div>
           </div>

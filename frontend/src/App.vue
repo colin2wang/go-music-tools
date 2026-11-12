@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterView } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { AlertCircle } from 'lucide-vue-next'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppTopBar from '@/components/layout/AppTopBar.vue'
@@ -10,6 +11,7 @@ import { useConfigStore } from '@/stores/config'
 import { useLogStore } from '@/stores/logs'
 import { useTaskStore } from '@/stores/task'
 
+const { t } = useI18n()
 const collapsed = ref(false)
 const logs = useLogStore()
 const tasks = useTaskStore()
@@ -76,7 +78,7 @@ onBeforeUnmount(() => {
         class="glass-panel mb-4 flex items-center gap-3 border-[rgba(239,68,68,0.35)] p-4 text-[13px] text-[var(--err)]"
       >
         <AlertCircle :size="16" />
-        <span>Wails 绑定未就绪：{{ initError }}。请通过 wails dev 或构建后的应用打开界面。</span>
+        <span>{{ t('layout.wailsNotReady', { msg: initError }) }}</span>
       </div>
       <RouterView v-slot="{ Component }">
         <Transition name="page" mode="out-in">

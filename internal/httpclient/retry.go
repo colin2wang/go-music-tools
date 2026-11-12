@@ -120,7 +120,7 @@ func (c *Client) backoff(ctx context.Context, attempt int) error {
 	return SleepContext(ctx, time.Duration(d*float64(time.Second)))
 }
 
-// MetadataIntervalStore 由 internal/db.DB 实现，避免 httpclient 依赖具体数据库。
+// MetadataIntervalStore 由 internal/store.Store 实现，避免 httpclient 依赖具体存储。
 type MetadataIntervalStore interface {
 	GetMetadataTimestamp() (float64, error)
 	SetMetadataTimestamp(float64) error

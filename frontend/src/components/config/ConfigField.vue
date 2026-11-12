@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { FolderOpen, RotateCcw, AlertCircle } from 'lucide-vue-next'
 import type { ConfigField as Field } from '@/types'
 
+const { t, te } = useI18n()
+
 const props = defineProps<{
   field: Field
+  groupKey: string
   value: string | number | boolean
   error?: string
 }>()
@@ -13,6 +17,16 @@ const emit = defineEmits<{
   (e: 'update', value: string | number | boolean): void
   (e: 'browse'): void
 }>()
+
+// 语言包有对应键时使用翻译，否则回退后端 schema 自带的中文文案。
+const label = computed(() => {
+  const key = `schema.field.${props.groupKey}.${props.field.key}`
+  return te(key) ? t(key) : props.field.label
+})
+const description = computed(() => {
+  const key = `schema.desc.${props.groupKey}.${props.field.key}`
+  return te(key) ? t(key) : props.field.description
+})
 
 const changed = computed(() => String(props.value) !== String(props.field.default))
 const isPath = computed(() => props.field.type === 'path')
@@ -46,19 +60,19 @@ function reset() {
         : 'border-[var(--border-soft)] bg-[rgba(11,16,32,0.45)] hover:border-[rgba(148,163,184,0.28)]'"
   >
     <div class="mb-1 flex items-center gap-2">
-      <label class="text-[12.5px] font-semibold text-[var(--text-primary)]">{{ field.label }}</label>
+      <label class="text-[12.5px] font-semibold text-[var(--text-primary)]">{{ label }}</label>
       <span class="rounded bg-[rgba(148,163,184,0.1)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-muted)]">
         {{ field.type }}
       </span>
-      <span v-if="field.required" class="text-[11px] text-[var(--brand-300)]">必填</span>
+      <span v-if="field.required" class="text-[11px] text-[var(--brand-300)]">{{ t('common.required') }}</span>
       <button
         v-if="changed"
         type="button"
         class="ml-auto flex items-center gap-1 text-[10.5px] text-[var(--text-muted)] transition-colors hover:text-[var(--brand-300)]"
-        title="恢复该项默认值"
+        :title="t('common.resetField')"
         @click="reset"
       >
-        <RotateCcw :size="11" /> 默认 {{ field.default }}
+        <RotateCcw :size="11" /> {{ t('common.defaultWith', { v: field.default }) }}
       </button>
     </div>
 
@@ -78,7 +92,7 @@ function reset() {
             :style="{ left: value ? '24px' : '4px' }"
           />
         </button>
-        <span class="text-[12px] text-[var(--text-secondary)]">{{ value ? '已启用' : '已关闭' }}</span>
+        <span class="text-[12px] text-[var(--text-secondary)]">{{ value ? t('common.enabled') : t('common.disabled') }}</span>
       </div>
 
       <select
@@ -106,22 +120,22 @@ function reset() {
           type="text"
           class="field-input h-9 text-[12.5px]"
           :value="String(value)"
-          :placeholder="field.description"
+          :placeholder="description"
           @input="onInput"
         />
         <button
           v-if="isPath"
           type="button"
           class="ghost-button flex h-9 shrink-0 items-center gap-1.5 px-3 text-[11.5px]"
-          title="选择目录"
+          :title="t('settings.browseDir')"
           @click="emit('browse')"
         >
-          <FolderOpen :size="14" /> 浏览
+          <FolderOpen :size="14" /> {{ t('common.browse') }}
         </button>
       </div>
     </div>
 
-    <p class="mt-2 text-[11px] leading-relaxed text-[var(--text-muted)]">{{ field.description }}</p>
+    <p class="mt-2 text-[11px] leading-relaxed text-[var(--text-muted)]">{{ description }}</p>
     <p v-if="error" class="mt-1.5 flex items-center gap-1 text-[11px] text-[var(--err)]">
       <AlertCircle :size="12" /> {{ error }}
     </p>

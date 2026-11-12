@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Download, Disc3, ListMusic, Music2, Link2, FolderOpen, Play, Loader2, History } from 'lucide-vue-next'
 import { bindings } from '@/api/bindings'
 import { useConfigStore } from '@/stores/config'
@@ -11,11 +12,15 @@ import type { DownloadRequest } from '@/types'
 
 type Kind = DownloadRequest['kind']
 
-const modes: { kind: Kind; title: string; description: string; icon: typeof Disc3; badge: string }[] = [
-  { kind: 'song', title: '单曲下载', description: '按歌曲 ID 下载一首，自动写入标签、歌词与封面', icon: Music2, badge: 'SONG' },
-  { kind: 'album', title: '整张专辑', description: '生成专辑目录、说明文件与高清封面，按曲目号排序', icon: Disc3, badge: 'ALBUM' },
-  { kind: 'playlist', title: '整个歌单', description: '按歌单顺序批量下载，生成歌单说明与曲目清单', icon: ListMusic, badge: 'PLAYLIST' },
+const { t } = useI18n()
+
+const modes: { kind: Kind; key: string; icon: typeof Disc3; badge: string }[] = [
+  { kind: 'song', key: 'song', icon: Music2, badge: 'SONG' },
+  { kind: 'album', key: 'album', icon: Disc3, badge: 'ALBUM' },
+  { kind: 'playlist', key: 'playlist', icon: ListMusic, badge: 'PLAYLIST' },
 ]
+const modeTitle = (key: string) => t(`download.${key}Title`)
+const modeDesc = (key: string) => t(`download.${key}Desc`)
 
 const config = useConfigStore()
 const tasks = useTaskStore()
@@ -29,7 +34,6 @@ const notice = ref<{ ok: boolean; text: string } | null>(null)
 
 const needsIndexes = computed(() => kind.value !== 'song')
 const currentMode = computed(() => modes.find((item) => item.kind === kind.value) ?? modes[0])
-
 watch(
   () => config.values.download?.default_quality,
   (value) => { if (typeof value === 'string' && value) quality.value = value },
@@ -59,13 +63,13 @@ async function extractID() {
   const id = await bindings.extractResourceID(raw)
   if (id && id !== raw) {
     resourceId.value = id
-    flash(true, `已从分享链接提取 ID：${id}`)
+    flash(true, t('download.extracted', { id }))
   }
 }
 
 async function start() {
   if (!resourceId.value.trim()) {
-    flash(false, '请填写歌曲、专辑或歌单 ID')
+    flash(false, t('download.needId'))
     return
   }
   starting.value = true
@@ -76,7 +80,7 @@ async function start() {
     indexes: needsIndexes.value ? indexes.value : [],
   }
   await bindings.download(request)
-  flash(true, '下载任务已启动，进度与日志见下方实时窗口')
+  flash(true, t('download.started'))
   starting.value = false
 }
 
@@ -98,20 +102,20 @@ function formatTime(seconds: number): string {
         <div class="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-300)]">
           <Download :size="13" /> Download workspace
         </div>
-        <h1>下载工作台</h1>
+        <h1>{{ t('download.title') }}</h1>
         <p class="muted mt-1.5 text-[12.5px]">
-          支持 ID 或分享链接、7 档音质与指定曲目；下载过程自动整理目录、封面、歌词和音频标签。
+          {{ t('download.subtitle') }}
         </p>
       </div>
       <button type="button" class="ghost-button ml-auto flex h-9 items-center gap-2 px-3 text-[12px]" @click="openDir">
-        <FolderOpen :size="14" /> 打开下载目录
+        <FolderOpen :size="14" /> {{ t('download.openDir') }}
       </button>
     </header>
 
     <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
       <div class="space-y-4">
         <section class="glass-panel p-5">
-          <div class="mb-3 text-[12px] font-semibold text-[var(--text-secondary)]">选择下载方式</div>
+          <div class="mb-3 text-[12px] font-semibold text-[var(--text-secondary)]">{{ t('download.chooseMode') }}</div>
           <div class="space-y-2">
             <button
               v-for="mode in modes"
@@ -128,10 +132,10 @@ function formatTime(seconds: number): string {
               </div>
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2 text-[13px] font-semibold">
-                  {{ mode.title }}
+                  {{ modeTitle(mode.key) }}
                   <span class="font-mono text-[9.5px] text-[var(--text-muted)]">{{ mode.badge }}</span>
                 </div>
-                <div class="mt-0.5 text-[11px] leading-relaxed text-[var(--text-muted)]">{{ mode.description }}</div>
+                <div class="mt-0.5 text-[11px] leading-relaxed text-[var(--text-muted)]">{{ modeDesc(mode.key) }}</div>
               </div>
             </button>
           </div>
@@ -140,7 +144,7 @@ function formatTime(seconds: number): string {
         <section class="glass-panel space-y-4 p-5">
           <div>
             <label class="mb-1.5 flex items-center gap-1.5 text-[12px] font-medium text-[var(--text-secondary)]">
-              <Link2 :size="13" /> {{ currentMode.title }} ID 或分享链接
+              <Link2 :size="13" /> {{ t('download.idLabel', { mode: modeTitle(currentMode.key) }) }}
             </label>
             <input
               v-model="resourceId"
@@ -150,14 +154,14 @@ function formatTime(seconds: number): string {
               @blur="extractID"
             />
           </div>
-          <QualitySelect v-model="quality" label="音质" />
+          <QualitySelect v-model="quality" :label="t('download.quality')" />
           <IndexPicker v-if="needsIndexes" v-model="indexRaw" @change="(v) => (indexes = v)" />
 
           <div class="flex items-center gap-3 border-t border-[var(--border-soft)] pt-4">
             <button type="button" class="brand-button flex h-10 flex-1 items-center justify-center gap-2 text-[13px]" :disabled="starting || tasks.running" @click="start">
               <Loader2 v-if="starting" :size="15" class="animate-spin" />
               <Play v-else :size="15" />
-              开始下载
+              {{ t('download.start') }}
             </button>
             <span v-if="notice" class="max-w-[45%] truncate text-[11px]" :class="notice.ok ? 'text-[var(--ok)]' : 'text-[var(--err)]'">
               {{ notice.text }}
@@ -171,22 +175,22 @@ function formatTime(seconds: number): string {
 
         <section class="glass-panel p-5">
           <div class="mb-3 flex items-center gap-2 text-[13px] font-semibold">
-            <History :size="15" class="text-[var(--brand-300)]" /> 最近任务
+            <History :size="15" class="text-[var(--brand-300)]" /> {{ t('download.history') }}
           </div>
           <div v-if="!tasks.history.length" class="py-6 text-center text-[12px] text-[var(--text-muted)]">
-            暂无历史记录。完成一次下载后，这里会显示成功、跳过与失败的数量。
+            {{ t('download.noHistory') }}
           </div>
           <div v-else class="overflow-x-auto">
             <table class="w-full text-left text-[11.5px]">
               <thead class="text-[var(--text-muted)]">
                 <tr class="border-b border-[var(--border-soft)]">
-                  <th class="pb-2 font-medium">时间</th>
-                  <th class="pb-2 font-medium">类型</th>
-                  <th class="pb-2 font-medium">音质</th>
-                  <th class="pb-2 font-medium">成功</th>
-                  <th class="pb-2 font-medium">跳过</th>
-                  <th class="pb-2 font-medium">失败</th>
-                  <th class="pb-2 font-medium">操作</th>
+                  <th class="pb-2 font-medium">{{ t('download.thTime') }}</th>
+                  <th class="pb-2 font-medium">{{ t('download.thKind') }}</th>
+                  <th class="pb-2 font-medium">{{ t('download.thQuality') }}</th>
+                  <th class="pb-2 font-medium">{{ t('common.success') }}</th>
+                  <th class="pb-2 font-medium">{{ t('common.skipped') }}</th>
+                  <th class="pb-2 font-medium">{{ t('common.failed') }}</th>
+                  <th class="pb-2 font-medium">{{ t('download.thAction') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -199,7 +203,7 @@ function formatTime(seconds: number): string {
                   <td class="py-2 text-[var(--err)]">{{ row.failed }}</td>
                   <td class="py-2">
                     <button type="button" class="flex items-center gap-1 text-[11px] text-[var(--brand-400)] hover:text-[var(--brand-300)]" @click="openDir">
-                      <FolderOpen :size="12" /> 打开所在目录
+                      <FolderOpen :size="12" /> {{ t('common.openContaining') }}
                     </button>
                   </td>
                 </tr>

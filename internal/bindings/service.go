@@ -4,17 +4,15 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sync"
 
 	"go-music-tools/internal/config"
-	"go-music-tools/internal/db"
 	"go-music-tools/internal/httpclient"
 	"go-music-tools/internal/logx"
 	"go-music-tools/internal/model"
 	"go-music-tools/internal/oomusic"
+	"go-music-tools/internal/store"
 	"go-music-tools/internal/task"
 )
 
@@ -22,7 +20,7 @@ type Deps struct {
 	Root   string
 	Config *config.Store
 	Logs   *logx.Hub
-	DB     *db.DB
+	Cache  *store.Store
 	Logger *slog.Logger
 }
 
@@ -44,12 +42,12 @@ type Service struct {
 }
 
 func NewService(d Deps) (*Service, error) {
-	if d.Config == nil || d.Logs == nil || d.DB == nil || d.Logger == nil {
+	if d.Config == nil || d.Logs == nil || d.Cache == nil || d.Logger == nil {
 		return nil, fmt.Errorf("绑定服务缺少必要依赖")
 	}
 	s := &Service{deps: d, tasks: task.NewManager(d.Logger)}
 	s.tasks.SetOnFinish(func(done task.Done) {
-		_ = d.DB.AddTaskHistory(model.TaskRecord{
+		_ = d.Cache.AddTaskHistory(model.TaskRecord{
 			Kind: done.Kind, Success: done.Success, Skipped: done.Skipped, Failed: done.Failed,
 		})
 	})
@@ -137,21 +135,21 @@ func (s *Service) dialogs() (func(string) (string, error), func(string) (string,
 }
 
 // OpenPath 用系统文件管理器打开目录或文件所在位置。
+// Windows 上优先复用已显示该目录的资源管理器窗口（见 openpath_windows.go），
+// 避免重复点击开出多个相同窗口；Win10 与 Win11（标签页）行为一致。
 func (s *Service) OpenPath(path string) error {
 	target := s.resolve(path)
 	if _, err := os.Stat(target); err != nil {
 		return fmt.Errorf("路径不存在: %s", target)
 	}
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "windows":
-		cmd = exec.Command("explorer", target)
-	case "darwin":
-		cmd = exec.Command("open", target)
-	default:
-		cmd = exec.Command("xdg-open", target)
+	abs, err := filepath.Abs(target)
+	if err != nil {
+		return err
 	}
-	return cmd.Start()
+	if info, err := os.Stat(abs); err == nil && !info.IsDir() {
+		return openFileInFileManager(abs)
+	}
+	return openInFileManager(abs)
 }
 
 // SelectDirectory 由「目录选择」按钮调用；未注入对话框时返回提示错误。

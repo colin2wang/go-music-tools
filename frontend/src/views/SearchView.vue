@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Search, Loader2, Music2, Clock3, Download, X, ListPlus, Disc3 } from 'lucide-vue-next'
 import { bindings } from '@/api/bindings'
 import { useConfigStore } from '@/stores/config'
@@ -8,6 +9,7 @@ import QualitySelect from '@/components/common/QualitySelect.vue'
 import TaskProgressCard from '@/components/common/TaskProgressCard.vue'
 import type { SearchSong } from '@/types'
 
+const { t } = useI18n()
 const config = useConfigStore()
 const tasks = useTaskStore()
 const keyword = ref('')
@@ -34,7 +36,7 @@ async function search() {
   selected.value = []
   if (!history.value.includes(value)) history.value.unshift(value)
   history.value = history.value.slice(0, 8)
-  flash(`找到 ${results.value.length} 条结果`)
+  flash(t('search.found', { n: results.value.length }))
   searching.value = false
 }
 
@@ -58,11 +60,11 @@ function duration(seconds: number): string {
 
 async function downloadSelected() {
   if (!selected.value.length) {
-    flash('请先勾选要下载的歌曲')
+    flash(t('search.needSelect'))
     return
   }
   await bindings.downloadSongs(selected.value, quality.value)
-  flash(`已启动 ${selected.value.length} 首歌曲的下载任务`)
+  flash(t('search.started', { n: selected.value.length }))
   await tasks.refresh()
 }
 </script>
@@ -73,8 +75,8 @@ async function downloadSelected() {
       <div class="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-300)]">
         <Search :size="13" /> Music search
       </div>
-      <h1>音乐搜索</h1>
-      <p class="muted mt-1.5 text-[12.5px]">通过网易云代理检索歌曲，查看详情后可批量加入下载队列。</p>
+      <h1>{{ t('search.title') }}</h1>
+      <p class="muted mt-1.5 text-[12.5px]">{{ t('search.subtitle') }}</p>
     </header>
 
     <section class="glass-panel mb-4 p-4">
@@ -85,17 +87,17 @@ async function downloadSelected() {
             v-model="keyword"
             type="text"
             class="field-input h-10 pl-9 text-[13px]"
-            placeholder="输入歌曲名、歌手或关键词，回车搜索"
+            :placeholder="t('search.placeholder')"
             @keyup.enter="search"
           />
         </div>
         <button type="button" class="brand-button flex h-10 items-center gap-2 px-5 text-[12.5px]" :disabled="searching" @click="search">
           <Loader2 v-if="searching" :size="15" class="animate-spin" />
-          <Search v-else :size="15" /> 搜索
+          <Search v-else :size="15" /> {{ t('search.btn') }}
         </button>
       </div>
       <div v-if="history.length" class="mt-3 flex flex-wrap items-center gap-1.5">
-        <span class="mr-1 text-[11px] text-[var(--text-muted)]">最近搜索</span>
+        <span class="mr-1 text-[11px] text-[var(--text-muted)]">{{ t('search.recent') }}</span>
         <button
           v-for="item in history"
           :key="item"
@@ -105,15 +107,15 @@ async function downloadSelected() {
         >
           {{ item }}
         </button>
-        <button type="button" class="ml-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--err)]" @click="history = []">清空</button>
+        <button type="button" class="ml-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--err)]" @click="history = []">{{ t('search.clearHistory') }}</button>
       </div>
     </section>
 
     <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
       <section class="glass-panel overflow-hidden">
         <div class="flex flex-wrap items-center gap-3 border-b border-[var(--border-soft)] px-4 py-3">
-          <span class="text-[12.5px] font-semibold">搜索结果</span>
-          <span class="rounded-full bg-[rgba(108,92,231,0.14)] px-2 py-0.5 text-[10.5px] text-[var(--brand-400)]">{{ results.length }} 首</span>
+          <span class="text-[12.5px] font-semibold">{{ t('search.results') }}</span>
+          <span class="rounded-full bg-[rgba(108,92,231,0.14)] px-2 py-0.5 text-[10.5px] text-[var(--brand-400)]">{{ t('search.count', { n: results.length }) }}</span>
           <span v-if="notice" class="text-[11px] text-[var(--ok)]">{{ notice }}</span>
           <button
             type="button"
@@ -121,26 +123,26 @@ async function downloadSelected() {
             :disabled="!results.length"
             @click="toggleAll"
           >
-            <ListPlus :size="13" /> {{ selectedCount === results.length && results.length ? '取消全选' : '全选' }}
+            <ListPlus :size="13" /> {{ selectedCount === results.length && results.length ? t('search.deselectAll') : t('search.selectAll') }}
           </button>
         </div>
 
         <div v-if="!results.length" class="flex flex-col items-center gap-2 py-14 text-center">
           <Music2 :size="28" class="text-[var(--text-muted)]" />
-          <p class="text-[12.5px] text-[var(--text-secondary)]">输入关键词开始检索</p>
-          <p class="text-[11px] text-[var(--text-muted)]">搜索结果会显示歌名、歌手、专辑与时长，可勾选后统一下载。</p>
+          <p class="text-[12.5px] text-[var(--text-secondary)]">{{ t('search.emptyTitle') }}</p>
+          <p class="text-[11px] text-[var(--text-muted)]">{{ t('search.emptyHint') }}</p>
         </div>
 
         <div v-else class="max-h-[420px] overflow-y-auto">
           <table class="w-full text-left text-[11.5px]">
             <thead class="sticky top-0 bg-[rgba(19,26,46,0.96)] text-[var(--text-muted)]">
               <tr class="border-b border-[var(--border-soft)]">
-                <th class="w-10 px-4 py-2.5 font-medium">选</th>
-                <th class="py-2.5 font-medium">歌曲</th>
-                <th class="py-2.5 font-medium">歌手</th>
-                <th class="py-2.5 font-medium">专辑</th>
-                <th class="py-2.5 font-medium">时长</th>
-                <th class="w-16 py-2.5 font-medium">详情</th>
+                <th class="w-10 px-4 py-2.5 font-medium">{{ t('search.colSelect') }}</th>
+                <th class="py-2.5 font-medium">{{ t('search.colSong') }}</th>
+                <th class="py-2.5 font-medium">{{ t('search.colArtist') }}</th>
+                <th class="py-2.5 font-medium">{{ t('search.colAlbum') }}</th>
+                <th class="py-2.5 font-medium">{{ t('search.colDuration') }}</th>
+                <th class="w-16 py-2.5 font-medium">{{ t('search.colDetail') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -154,12 +156,12 @@ async function downloadSelected() {
                 <td class="px-4 py-2.5">
                   <input type="checkbox" class="h-3.5 w-3.5 cursor-pointer accent-[#6C5CE7]" :checked="selected.includes(song.id)" @click.stop="toggle(song.id)" />
                 </td>
-                <td class="max-w-[220px] truncate py-2.5 font-medium" :title="song.name">{{ song.name || '未命名歌曲' }}</td>
-                <td class="max-w-[150px] truncate py-2.5 text-[var(--text-secondary)]" :title="song.artists">{{ song.artists || '—' }}</td>
-                <td class="max-w-[160px] truncate py-2.5 text-[var(--text-muted)]" :title="song.album">{{ song.album || '—' }}</td>
+                <td class="max-w-[220px] truncate py-2.5 font-medium" :title="song.name">{{ song.name || t('common.unnamedSong') }}</td>
+                <td class="max-w-[150px] truncate py-2.5 text-[var(--text-secondary)]" :title="song.artists">{{ song.artists || t('common.none') }}</td>
+                <td class="max-w-[160px] truncate py-2.5 text-[var(--text-muted)]" :title="song.album">{{ song.album || t('common.none') }}</td>
                 <td class="py-2.5 font-mono text-[var(--text-muted)]">{{ duration(song.duration) }}</td>
                 <td class="py-2.5">
-                  <button type="button" class="text-[var(--brand-400)] hover:text-[var(--brand-300)]" @click.stop="active = song">查看</button>
+                  <button type="button" class="text-[var(--brand-400)] hover:text-[var(--brand-300)]" @click.stop="active = song">{{ t('common.view') }}</button>
                 </td>
               </tr>
             </tbody>
@@ -170,7 +172,7 @@ async function downloadSelected() {
       <div class="space-y-4">
         <section class="glass-panel p-4">
           <div class="mb-3 flex items-center gap-2 text-[12.5px] font-semibold">
-            <Disc3 :size="14" class="text-[var(--brand-300)]" /> 歌曲详情
+            <Disc3 :size="14" class="text-[var(--brand-300)]" /> {{ t('search.detail') }}
             <button v-if="active" type="button" class="ml-auto text-[var(--text-muted)] hover:text-[var(--text-primary)]" @click="active = null"><X :size="14" /></button>
           </div>
           <template v-if="active">
@@ -180,21 +182,21 @@ async function downloadSelected() {
             </div>
             <div class="space-y-1.5 text-[11.5px]">
               <div class="text-[14px] font-semibold">{{ active.name }}</div>
-              <div class="text-[var(--text-secondary)]">{{ active.artists || '未知歌手' }}</div>
-              <div class="text-[var(--text-muted)]">{{ active.album || '未知专辑' }}</div>
+              <div class="text-[var(--text-secondary)]">{{ active.artists || t('common.unknownArtist') }}</div>
+              <div class="text-[var(--text-muted)]">{{ active.album || t('common.unknownAlbum') }}</div>
               <div class="flex items-center gap-1 font-mono text-[var(--text-muted)]"><Clock3 :size="11" /> {{ duration(active.duration) }} · ID {{ active.id }}</div>
             </div>
           </template>
-          <p v-else class="py-6 text-center text-[11.5px] text-[var(--text-muted)]">点击结果行查看封面与歌曲信息</p>
+          <p v-else class="py-6 text-center text-[11.5px] text-[var(--text-muted)]">{{ t('search.detailHint') }}</p>
         </section>
 
         <section class="glass-panel space-y-3 p-4">
-          <QualitySelect v-model="quality" label="下载音质" />
+          <QualitySelect v-model="quality" :label="t('search.qualityLabel')" />
           <button type="button" class="brand-button flex h-10 w-full items-center justify-center gap-2 text-[12.5px]" :disabled="!selectedCount || tasks.running" @click="downloadSelected">
-            <Download :size="15" /> 下载选中（{{ selectedCount }}）
+            <Download :size="15" /> {{ t('search.downloadSelected', { n: selectedCount }) }}
           </button>
           <p class="text-[11px] leading-relaxed text-[var(--text-muted)]">
-            默认音质来自设置页：{{ config.values.download?.default_quality ?? 'lossless' }}。多选歌曲会合并为一个任务串行下载。
+            {{ t('search.hint', { q: config.values.download?.default_quality ?? 'lossless' }) }}
           </p>
         </section>
       </div>

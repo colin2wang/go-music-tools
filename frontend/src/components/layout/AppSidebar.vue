@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   Download, Search, Music2, FolderOpen, Settings, ChevronLeft, ChevronRight,
-  Activity, Disc3,
+  Activity, Disc3, Database,
 } from 'lucide-vue-next'
 
 const props = defineProps<{ collapsed: boolean }>()
@@ -11,14 +12,16 @@ const emit = defineEmits<{ (e: 'update:collapsed', value: boolean): void }>()
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
-const items = [
-  { path: '/download', label: '下载工作台', hint: '单曲 · 专辑 · 歌单', icon: Download },
-  { path: '/search', label: '音乐搜索', hint: '关键词检索与入队', icon: Search },
-  { path: '/oomusic', label: 'OO Music', hint: 'FLAC / M4A 多档音质', icon: Music2 },
-  { path: '/library', label: '音乐库工具', hint: '批量修补本地专辑', icon: FolderOpen },
-  { path: '/settings', label: '设置', hint: 'YAML 可视化编辑', icon: Settings },
-]
+const items = computed(() => [
+  { path: '/download', label: t('router.download'), hint: t('router.hintDownload'), icon: Download },
+  { path: '/search', label: t('router.search'), hint: t('router.hintSearch'), icon: Search },
+  { path: '/oomusic', label: t('router.oomusic'), hint: t('router.hintOO'), icon: Music2 },
+  { path: '/library', label: t('router.library'), hint: t('router.hintLibrary'), icon: FolderOpen },
+  { path: '/cache', label: t('router.cache'), hint: t('router.hintCache'), icon: Database },
+  { path: '/settings', label: t('router.settings'), hint: t('router.hintSettings'), icon: Settings },
+])
 
 const active = computed(() => route.path)
 function navigate(path: string) {
@@ -70,10 +73,10 @@ function navigate(path: string) {
 
     <div v-if="!props.collapsed" class="mx-3 mb-3 rounded-xl border border-[var(--border-soft)] bg-[rgba(34,211,238,0.05)] p-3">
       <div class="mb-1.5 flex items-center gap-2 text-[11px] font-semibold text-[var(--brand-300)]">
-        <Activity :size="13" /> 实时控制台
+        <Activity :size="13" /> {{ t('sidebar.consoleTitle') }}
       </div>
       <p class="text-[11px] leading-relaxed text-[var(--text-muted)]">
-        所有下载与修补任务都在底部日志窗口实时输出，支持等级过滤与导出。
+        {{ t('sidebar.consoleHint') }}
       </p>
     </div>
 
@@ -84,7 +87,7 @@ function navigate(path: string) {
     >
       <ChevronLeft v-if="!props.collapsed" :size="15" />
       <ChevronRight v-else :size="15" />
-      <span v-if="!props.collapsed">收起侧栏</span>
+      <span v-if="!props.collapsed">{{ t('sidebar.collapse') }}</span>
     </button>
   </aside>
 </template>

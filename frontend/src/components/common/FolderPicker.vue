@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { FolderOpen, Folder, RefreshCw } from 'lucide-vue-next'
 import { bindings } from '@/api/bindings'
 
+const { t } = useI18n()
 const props = defineProps<{ modelValue: string }>()
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
@@ -27,10 +29,10 @@ async function refresh() {
 }
 
 async function browse() {
-  const path = await bindings.selectDirectory('选择音乐库根目录')
+  const path = await bindings.selectDirectory(t('library.rootLabel'))
   if (path) {
     emit('update:modelValue', path)
-    notice.value = '目录已更新'
+    notice.value = t('library.dirUpdated')
     window.setTimeout(() => { notice.value = '' }, 2200)
     await refresh()
   }
@@ -42,26 +44,26 @@ onMounted(() => { void refresh() })
 
 <template>
   <div class="glass-panel p-4">
-    <label class="mb-1.5 block text-[12px] font-medium text-[var(--text-secondary)]">音乐库根目录</label>
+    <label class="mb-1.5 block text-[12px] font-medium text-[var(--text-secondary)]">{{ t('library.rootLabel') }}</label>
     <div class="flex flex-wrap gap-2">
       <input
         type="text"
         class="field-input h-10 min-w-[240px] flex-1 font-mono text-[12px]"
-        placeholder="例如 J:\\Music\\我的专辑"
+        :placeholder="t('library.rootPlaceholder')"
         :value="modelValue"
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       />
       <button type="button" class="ghost-button flex h-10 items-center gap-2 px-3 text-[12px]" @click="browse">
-        <FolderOpen :size="15" /> 浏览目录
+        <FolderOpen :size="15" /> {{ t('library.browse') }}
       </button>
-      <button type="button" class="ghost-button flex h-10 w-10 items-center justify-center" title="刷新子目录" @click="refresh">
+      <button type="button" class="ghost-button flex h-10 w-10 items-center justify-center" :title="t('library.refreshSub')" @click="refresh">
         <RefreshCw :size="14" :class="loading ? 'animate-spin' : ''" />
       </button>
     </div>
 
     <div class="mt-3 flex flex-wrap items-center gap-2">
       <span class="flex items-center gap-1.5 text-[11.5px] text-[var(--text-secondary)]">
-        <Folder :size="13" /> 检测到 {{ folders.length }} 个一级专辑目录
+        <Folder :size="13" /> {{ t('library.detected', { n: folders.length }) }}
       </span>
       <span v-if="notice" class="text-[11px] text-[var(--ok)]">{{ notice }}</span>
       <div v-if="folders.length" class="flex w-full flex-wrap gap-1.5">
@@ -74,7 +76,7 @@ onMounted(() => { void refresh() })
           {{ folder.split(/[\\/]/).pop() }}
         </span>
         <span v-if="folders.length > 12" class="px-2 py-1 text-[10.5px] text-[var(--text-muted)]">
-          以及 {{ folders.length - 12 }} 个…
+          {{ t('library.more', { n: folders.length - 12 }) }}
         </span>
       </div>
     </div>

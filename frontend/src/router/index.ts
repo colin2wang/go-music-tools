@@ -32,6 +32,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/SettingsView.vue'),
     meta: { title: '设置', icon: 'settings' },
   },
+  {
+    path: '/cache',
+    name: 'cache',
+    component: () => import('@/views/CacheView.vue'),
+    meta: { title: '缓存检视', icon: 'cache' },
+  },
 ]
 
 export default createRouter({

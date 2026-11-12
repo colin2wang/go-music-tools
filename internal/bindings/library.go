@@ -35,7 +35,7 @@ func (s *Service) RunLibraryFix(req LibraryFixRequest) (string, error) {
 		OnlyMissing: req.OnlyMissing, Force: req.Force,
 		Recursive: req.Recursive, ContinueOnError: req.ContinueOnError,
 	}
-	svc := library.New(s.cfg(), s.deps.Root, s.httpClient(), s.deps.Logger, s.deps.DB)
+	svc := library.New(s.cfg(), s.deps.Root, s.httpClient(), s.deps.Logger, s.deps.Cache)
 
 	return s.Start("library:"+string(kind), 0, func(ctx context.Context, r *task.Reporter) error {
 		s.deps.Logger.Info("批量修补任务开始", "kind", kind, "directory", directory)

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   Search, Loader2, Music2, Download, Clock3, Disc3, AlertCircle, RefreshCw,
   ListMusic, Zap, CircleDollarSign, FileAudio, RotateCcw, Square,
@@ -11,6 +12,7 @@ import QualitySelect from '@/components/common/QualitySelect.vue'
 import TaskProgressCard from '@/components/common/TaskProgressCard.vue'
 import { OO_QUALITY_LEVELS, type OODetail, type OOSong, type QualityOption } from '@/types'
 
+const { t } = useI18n()
 const config = useConfigStore()
 const tasks = useTaskStore()
 const keyword = ref('')
@@ -78,7 +80,7 @@ async function search() {
   if (!cacheHit.value) searched.value.push(value)
   activeMid.value = ''
   detail.value = null
-  flash(true, `找到 ${list.length} 条结果${cacheHit.value ? '（命中搜索缓存）' : ''}`)
+  flash(true, t('oo.found', { n: list.length, hit: cacheHit.value ? t('oo.cacheHit') : '' }))
   if (list.length) await selectSong(list[0])
 }
 
@@ -100,7 +102,7 @@ async function refreshQualities() {
   loadingDetail.value = false
   if (!list || !detail.value) return
   detail.value = { ...detail.value, quality_options: list }
-  flash(true, `检测到 ${list.length} 档可用音质`)
+  flash(true, t('oo.detected', { n: list.length }))
 }
 
 async function downloadOne(song: OOSong | null = active.value) {
@@ -111,23 +113,23 @@ async function downloadOne(song: OOSong | null = active.value) {
   }).catch(fail)
   starting.value = false
   if (!id) return
-  flash(true, `已启动单曲下载：${song.song_title}`)
+  flash(true, t('oo.startedOne', { title: song.song_title }))
   await tasks.refresh()
 }
 
 async function downloadAll() {
-  if (!searchedKeyword.value) { flash(false, '请先输入并搜索关键词'); return }
+  if (!searchedKeyword.value) { flash(false, t('oo.needKeyword')); return }
   starting.value = true
   const id = await bindings.ooBatchDownload(searchedKeyword.value, quality.value).catch(fail)
   starting.value = false
   if (!id) return
-  flash(true, `已启动 ${results.value.length} 首歌曲的批量下载`)
+  flash(true, t('oo.startedAll', { n: results.value.length }))
   await tasks.refresh()
 }
 
 async function retry(name: string) {
   const song = results.value.find((item) => `${item.singer_name} - ${item.song_title}` === name)
-  if (!song) { flash(false, '该失败项不在当前搜索结果中，请重新搜索后重试'); return }
+  if (!song) { flash(false, t('oo.retryMissing')); return }
   await selectSong(song)
   await downloadOne(song)
 }
@@ -136,7 +138,7 @@ function pickQuality(value: string) {
   qualityTouched.value = true
   quality.value = value
   if (!available.value.has(value) && firstAvailable.value) {
-    flash(false, `${value} 不可用，将自动回退到 ${firstAvailable.value}`)
+    flash(false, t('oo.fallbackNotice', { q: value, fb: firstAvailable.value }))
   }
 }
 </script>
@@ -148,11 +150,11 @@ function pickQuality(value: string) {
         <div class="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-300)]">
           <Zap :size="13" /> OO music console
         </div>
-        <h1>OO Music</h1>
-        <p class="muted mt-1.5 text-[12.5px]">通过代理检索歌曲，对比 SQ / HQ / standard / low 四档音质，单曲或批量下载 FLAC / M4A。</p>
+        <h1>{{ t('router.oomusic') }}</h1>
+        <p class="muted mt-1.5 text-[12.5px]">{{ t('oo.subtitle') }}</p>
       </div>
       <span class="ml-auto rounded-full border border-[var(--border-soft)] px-3 py-1.5 text-[11px] text-[var(--text-secondary)]">
-        输出目录：{{ config.values.advanced?.oo_music_download_dir ?? 'downloads/[OOMusic]' }}
+        {{ t('oo.outputDir', { dir: config.values.advanced?.oo_music_download_dir ?? 'downloads/[OOMusic]' }) }}
       </span>
     </header>
 
@@ -161,17 +163,17 @@ function pickQuality(value: string) {
         <div class="relative min-w-[260px] flex-1">
           <Search :size="15" class="absolute left-3 top-3 text-[var(--text-muted)]" />
           <input v-model="keyword" type="text" class="field-input h-10 pl-9 text-[13px]"
-            placeholder="输入歌曲名或歌手，回车搜索" @keyup.enter="search" />
+            :placeholder="t('oo.placeholder')" @keyup.enter="search" />
         </div>
         <button type="button" class="brand-button flex h-10 items-center gap-2 px-5 text-[12.5px]"
           :disabled="searching" @click="search">
-          <Loader2 v-if="searching" :size="15" class="animate-spin" /><Search v-else :size="15" /> 搜索
+          <Loader2 v-if="searching" :size="15" class="animate-spin" /><Search v-else :size="15" /> {{ t('oo.search') }}
         </button>
       </div>
       <div class="mt-2.5 flex flex-wrap items-center gap-3 text-[11px] text-[var(--text-muted)]">
-        <span class="flex items-center gap-1"><ListMusic :size="12" /> {{ results.length }} 首结果</span>
-        <span class="flex items-center gap-1"><Clock3 :size="12" /> {{ elapsedMS }}ms</span>
-        <span v-if="cacheHit" class="rounded-md bg-[rgba(34,197,94,0.12)] px-2 py-0.5 text-[var(--ok)]">命中进程内搜索缓存，未重复请求代理</span>
+        <span class="flex items-center gap-1"><ListMusic :size="12" /> {{ t('search.count', { n: results.length }) }}</span>
+        <span class="flex items-center gap-1"><Clock3 :size="12" /> {{ t('oo.elapsed', { n: elapsedMS }) }}</span>
+        <span v-if="cacheHit" class="rounded-md bg-[rgba(34,197,94,0.12)] px-2 py-0.5 text-[var(--ok)]">{{ t('oo.cacheHit') }}</span>
         <span v-if="notice" :class="notice.ok ? 'text-[var(--ok)]' : 'text-[var(--err)]'">{{ notice.text }}</span>
       </div>
     </section>
@@ -179,13 +181,13 @@ function pickQuality(value: string) {
     <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,300px)_minmax(0,1fr)_280px]">
       <section class="glass-panel overflow-hidden">
         <div class="flex items-center gap-2 border-b border-[var(--border-soft)] px-4 py-3 text-[12.5px] font-semibold">
-          <Music2 :size="14" class="text-[var(--brand-300)]" /> 搜索结果
-          <span class="ml-auto font-mono text-[10.5px] font-normal text-[var(--text-muted)]">{{ searchedKeyword || '未搜索' }}</span>
+          <Music2 :size="14" class="text-[var(--brand-300)]" /> {{ t('search.results') }}
+          <span class="ml-auto font-mono text-[10.5px] font-normal text-[var(--text-muted)]">{{ searchedKeyword || t('oo.notSearched') }}</span>
         </div>
         <div v-if="!results.length" class="flex flex-col items-center gap-2 px-4 py-14 text-center">
           <Disc3 :size="28" class="text-[var(--text-muted)]" />
-          <p class="text-[12px] text-[var(--text-secondary)]">输入关键词检索歌曲</p>
-          <p class="text-[11px] leading-relaxed text-[var(--text-muted)]">选中卡片后自动加载详情、可用音质与歌词预览。</p>
+          <p class="text-[12px] text-[var(--text-secondary)]">{{ t('oo.emptyTitle') }}</p>
+          <p class="text-[11px] leading-relaxed text-[var(--text-muted)]">{{ t('oo.emptyHint') }}</p>
         </div>
         <div v-else class="max-h-[520px] space-y-1.5 overflow-y-auto p-2.5">
           <button v-for="(song, index) in results" :key="song.song_mid" type="button"
@@ -196,11 +198,11 @@ function pickQuality(value: string) {
             @click="selectSong(song)">
             <span class="w-5 shrink-0 font-mono text-[10.5px] text-[var(--text-muted)]">{{ String(index + 1).padStart(2, '0') }}</span>
             <div class="min-w-0 flex-1">
-              <div class="truncate text-[12.5px] font-medium">{{ song.song_title || '未命名歌曲' }}</div>
-              <div class="truncate text-[11px] text-[var(--text-muted)]">{{ song.singer_name || '未知歌手' }}</div>
+              <div class="truncate text-[12.5px] font-medium">{{ song.song_title || t('common.unnamedSong') }}</div>
+              <div class="truncate text-[11px] text-[var(--text-muted)]">{{ song.singer_name || t('common.unknownArtist') }}</div>
             </div>
             <span v-if="isPaid(song)" class="flex shrink-0 items-center gap-1 rounded-md bg-[rgba(245,158,11,0.14)] px-1.5 py-0.5 text-[10px] text-[var(--warn)]">
-              <CircleDollarSign :size="10" /> 付费
+              <CircleDollarSign :size="10" /> {{ t('oo.paid') }}
             </span>
           </button>
         </div>
@@ -208,23 +210,23 @@ function pickQuality(value: string) {
 
       <section class="glass-panel p-4">
         <div class="mb-3 flex items-center gap-2 text-[13px] font-semibold">
-          <Disc3 :size="15" class="text-[var(--brand-300)]" /> 歌曲详情与音质对比
+          <Disc3 :size="15" class="text-[var(--brand-300)]" /> {{ t('oo.detailTitle') }}
           <Loader2 v-if="loadingDetail" :size="13" class="ml-auto animate-spin text-[var(--text-muted)]" />
           <button v-if="active" type="button" class="ghost-button ml-auto flex h-7 items-center gap-1 px-2 text-[11px]" @click="refreshQualities">
-            <RefreshCw :size="11" /> 重新检测
+            <RefreshCw :size="11" /> {{ t('oo.recheck') }}
           </button>
         </div>
 
         <template v-if="detail">
           <div class="flex gap-3">
-            <img v-if="detail.cover_url" :src="detail.cover_url" alt="专辑封面"
+            <img v-if="detail.cover_url" :src="detail.cover_url" alt="cover"
               class="h-24 w-24 shrink-0 rounded-xl object-cover" />
             <div v-else class="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-[rgba(148,163,184,0.08)] text-[var(--text-muted)]">
               <Music2 :size="24" />
             </div>
             <div class="min-w-0 flex-1 space-y-1 text-[11.5px]">
-              <div class="truncate text-[15px] font-semibold" :title="detail.title">{{ detail.title || '未命名歌曲' }}</div>
-              <div class="truncate text-[var(--text-secondary)]">{{ detail.artist || '未知歌手' }} · {{ detail.album || '未知专辑' }}</div>
+              <div class="truncate text-[15px] font-semibold" :title="detail.title">{{ detail.title || t('common.unnamedSong') }}</div>
+              <div class="truncate text-[var(--text-secondary)]">{{ detail.artist || t('common.unknownArtist') }} · {{ detail.album || t('common.unknownAlbum') }}</div>
               <div class="flex flex-wrap gap-x-3 gap-y-1 pt-1 font-mono text-[10.5px] text-[var(--text-muted)]">
                 <span class="flex items-center gap-1"><Clock3 :size="11" /> {{ detail.duration_str || '—' }}</span>
                 <span class="flex items-center gap-1"><FileAudio :size="11" /> {{ detail.file_extension || '.m4a' }}</span>
@@ -239,7 +241,7 @@ function pickQuality(value: string) {
 
           <div class="mt-4 overflow-hidden rounded-xl border border-[var(--border-soft)]">
             <div class="grid grid-cols-[1fr_70px_80px_50px] gap-2 border-b border-[var(--border-soft)] bg-[rgba(11,16,32,0.4)] px-3 py-2 text-[10.5px] text-[var(--text-muted)]">
-              <span>音质档位</span><span>码率</span><span>体积</span><span>格式</span>
+              <span>{{ t('oo.colQuality') }}</span><span>{{ t('oo.colKbps') }}</span><span>{{ t('oo.colSize') }}</span><span>{{ t('oo.colExt') }}</span>
             </div>
             <button v-for="row in qualityRows" :key="row.value" type="button"
               class="grid w-full grid-cols-[1fr_70px_80px_50px] gap-2 border-b border-[var(--border-soft)] px-3 py-2 text-left text-[11.5px] transition-colors last:border-b-0"
@@ -247,7 +249,7 @@ function pickQuality(value: string) {
               :disabled="!row.option" @click="pickQuality(row.value)">
               <span :class="row.option ? 'font-medium' : 'text-[var(--text-muted)]'">
                 {{ row.label }}
-                <span v-if="!row.option" class="ml-1 text-[10px]">不可用 · 回退 {{ firstAvailable || '无' }}</span>
+                <span v-if="!row.option" class="ml-1 text-[10px]">{{ t('oo.unavailable', { fallback: firstAvailable || t('common.none') }) }}</span>
               </span>
               <span class="text-[var(--text-secondary)]">{{ row.option?.kbps ? row.option.kbps + ' k' : '—' }}</span>
               <span class="text-[var(--text-secondary)]">{{ row.option?.size || '—' }}</span>
@@ -257,8 +259,8 @@ function pickQuality(value: string) {
 
           <div v-if="lyricLines.length" class="mt-3 rounded-xl border border-[var(--border-soft)] px-3 py-2.5">
             <button type="button" class="flex w-full items-center gap-1.5 text-[11.5px] font-medium text-[var(--text-secondary)]" @click="lyricOpen = !lyricOpen">
-              <FileAudio :size="12" /> 歌词预览
-              <span class="ml-auto text-[10.5px] text-[var(--brand-400)]">{{ lyricOpen ? '收起' : '展开更多' }}</span>
+              <FileAudio :size="12" /> {{ t('oo.lyricPreview') }}
+              <span class="ml-auto text-[10.5px] text-[var(--brand-400)]">{{ lyricOpen ? t('oo.showLess') : t('oo.showMore') }}</span>
             </button>
             <div class="mt-1.5 space-y-0.5 font-mono text-[10.5px] text-[var(--text-muted)]">
               <div v-for="(line, index) in lyricLines" :key="index" class="truncate">{{ line }}</div>
@@ -267,45 +269,45 @@ function pickQuality(value: string) {
         </template>
         <div v-else class="flex flex-col items-center gap-2 py-16 text-center">
           <AlertCircle :size="24" class="text-[var(--text-muted)]" />
-          <p class="text-[12px] text-[var(--text-secondary)]">{{ loadingDetail ? '正在加载歌曲详情…' : '选择左侧任一歌曲查看音质与歌词' }}</p>
+          <p class="text-[12px] text-[var(--text-secondary)]">{{ loadingDetail ? t('oo.loadingDetail') : t('oo.pickHint') }}</p>
         </div>
       </section>
 
       <div class="space-y-4">
         <section class="glass-panel space-y-3 p-4">
-          <div class="text-[13px] font-semibold">下载控制台</div>
-          <QualitySelect v-model="quality" source="oo" label="目标音质" @update:modelValue="qualityTouched = true" />
+          <div class="text-[13px] font-semibold">{{ t('oo.console') }}</div>
+          <QualitySelect v-model="quality" source="oo" :label="t('oo.targetQuality')" @update:modelValue="qualityTouched = true" />
           <button type="button" class="brand-button flex h-10 w-full items-center justify-center gap-2 text-[12.5px]"
             :disabled="!active || starting || tasks.running" @click="downloadOne()">
-            <Download :size="15" /> 下载当前单曲
+            <Download :size="15" /> {{ t('oo.downloadOne') }}
           </button>
           <button type="button" class="ghost-button flex h-10 w-full items-center justify-center gap-2 text-[12.5px]"
             :disabled="!results.length || starting || tasks.running" @click="downloadAll">
-            <ListMusic :size="15" /> 批量下载全部（{{ results.length }}）
+            <ListMusic :size="15" /> {{ t('oo.downloadAll', { n: results.length }) }}
           </button>
           <button type="button" class="ghost-button flex h-9 w-full items-center justify-center gap-2 text-[11.5px] text-[var(--err)]"
             :disabled="!tasks.running" @click="tasks.cancel()">
-            <Square :size="12" /> 中断当前任务
+            <Square :size="12" /> {{ t('oo.cancelCurrent') }}
           </button>
           <p class="text-[11px] leading-relaxed text-[var(--text-muted)]">
-            已存在文件自动跳过；不可用音质按 SQ → HQ → standard → low 顺序回退，实际档位与扩展名会写入日志。
+            {{ t('oo.skipHint') }}
           </p>
           <div class="grid grid-cols-3 gap-2 border-t border-[var(--border-soft)] pt-3 text-center">
-            <div><div class="text-[16px] font-semibold text-[var(--ok)]">{{ tasks.progress?.success ?? 0 }}</div><div class="text-[10px] text-[var(--text-muted)]">成功</div></div>
-            <div><div class="text-[16px] font-semibold text-[var(--warn)]">{{ tasks.progress?.skipped ?? 0 }}</div><div class="text-[10px] text-[var(--text-muted)]">跳过</div></div>
-            <div><div class="text-[16px] font-semibold text-[var(--err)]">{{ tasks.progress?.failed ?? 0 }}</div><div class="text-[10px] text-[var(--text-muted)]">失败</div></div>
+            <div><div class="text-[16px] font-semibold text-[var(--ok)]">{{ tasks.progress?.success ?? 0 }}</div><div class="text-[10px] text-[var(--text-muted)]">{{ t('common.success') }}</div></div>
+            <div><div class="text-[16px] font-semibold text-[var(--warn)]">{{ tasks.progress?.skipped ?? 0 }}</div><div class="text-[10px] text-[var(--text-muted)]">{{ t('common.skipped') }}</div></div>
+            <div><div class="text-[16px] font-semibold text-[var(--err)]">{{ tasks.progress?.failed ?? 0 }}</div><div class="text-[10px] text-[var(--text-muted)]">{{ t('common.failed') }}</div></div>
           </div>
         </section>
 
         <section v-if="failedItems.length" class="glass-panel p-4">
-          <div class="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-[var(--err)]">
-            <AlertCircle :size="13" /> 失败项（{{ failedItems.length }}）
+          <div class="mb-2 flex items-center gap-2 text-[12px] font-semibold text-[var(--err)]">
+            <AlertCircle :size="13" /> {{ t('oo.failedItems', { n: failedItems.length }) }}
           </div>
           <div class="max-h-[160px] space-y-1.5 overflow-y-auto">
             <div v-for="(item, index) in failedItems" :key="index + item.name" class="flex items-center gap-2 text-[11px]">
               <span class="min-w-0 flex-1 truncate" :title="item.message">{{ item.name }}</span>
               <button type="button" class="ghost-button flex h-6 shrink-0 items-center gap-1 px-2 text-[10.5px]" @click="retry(item.name)">
-                <RotateCcw :size="10" /> 重试
+                <RotateCcw :size="10" /> {{ t('oo.retry') }}
               </button>
             </div>
           </div>

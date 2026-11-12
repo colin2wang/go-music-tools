@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { SlidersHorizontal, ShieldCheck, Database, HardDrive, Info } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
+import { SlidersHorizontal, ShieldCheck, HardDrive, Info } from 'lucide-vue-next'
 import { useConfigStore } from '@/stores/config'
 import ConfigForm from '@/components/config/ConfigForm.vue'
 
+const { t } = useI18n()
 const config = useConfigStore()
 
 const anchors = computed(() => config.groups.map((g) => ({ key: g.key, label: g.label, count: g.fields.length })))
@@ -11,11 +13,10 @@ const anchors = computed(() => config.groups.map((g) => ({ key: g.key, label: g.
 const summary = computed(() => {
   const v = config.values
   return [
-    { label: 'API 根地址', value: String(v.api?.base_url ?? '—'), icon: ShieldCheck },
-    { label: '下载目录', value: String(v.download?.default_dir ?? '—'), icon: HardDrive },
-    { label: '默认音质', value: String(v.download?.default_quality ?? '—'), icon: SlidersHorizontal },
-    { label: '日志级别', value: String(v.logging?.level ?? '—'), icon: Info },
-    { label: '数据库', value: config.appInfo?.database_path?.split(/[\\/]/).pop() ?? 'app.db', icon: Database },
+    { label: t('settings.sumApi'), value: String(v.api?.base_url ?? '—'), icon: ShieldCheck },
+    { label: t('settings.sumDownload'), value: String(v.download?.default_dir ?? '—'), icon: HardDrive },
+    { label: t('settings.sumQuality'), value: String(v.download?.default_quality ?? '—'), icon: SlidersHorizontal },
+    { label: t('settings.sumLog'), value: String(v.logging?.level ?? '—'), icon: Info },
   ]
 })
 
@@ -32,20 +33,20 @@ function scrollTo(key: string) {
         <div class="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-300)]">
           <SlidersHorizontal :size="13" /> Configuration
         </div>
-        <h1>设置</h1>
+        <h1>{{ t('router.settings') }}</h1>
         <p class="muted mt-1.5 text-[12.5px]">
-          全部选项保存在 config.yaml，表单由后端 schema 动态生成，保存后立即生效且无需重启。
+          {{ t('settings.subtitle') }}
         </p>
       </div>
       <div class="ml-auto hidden rounded-xl border border-[var(--border-soft)] bg-[rgba(34,211,238,0.05)] px-4 py-2.5 text-[11.5px] text-[var(--text-secondary)] md:block">
-        共 {{ config.groups.length }} 个分组 · {{ config.groups.reduce((n, g) => n + g.fields.length, 0) }} 个生效字段
+        {{ t('settings.groupsSummary', { n: config.groups.length, m: config.groups.reduce((n, g) => n + g.fields.length, 0) }) }}
       </div>
     </header>
 
     <div class="grid grid-cols-1 gap-4 xl:grid-cols-[168px_minmax(0,1fr)]">
       <aside class="hidden xl:block">
         <div class="glass-panel sticky top-1 p-3">
-          <div class="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">分组导航</div>
+          <div class="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('settings.navGroups') }}</div>
           <button
             v-for="item in anchors"
             :key="item.key"
@@ -58,7 +59,7 @@ function scrollTo(key: string) {
           </button>
 
           <div class="mt-4 border-t border-[var(--border-soft)] pt-3">
-            <div class="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">当前生效</div>
+            <div class="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('settings.activeNow') }}</div>
             <div v-for="row in summary" :key="row.label" class="mb-2 px-2">
               <div class="flex items-center gap-1.5 text-[10.5px] text-[var(--text-muted)]">
                 <component :is="row.icon" :size="11" /> {{ row.label }}

@@ -29,7 +29,8 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1
 - 后端业务包（`internal/*`）禁止 import Wails runtime；事件发射器由 `app.go` 注入。新增绑定服务放 `internal/bindings` 并在 `app.go` 注册。
 - 前端通过 `window.go.main.App.*` 调用绑定、`window.runtime.EventsOn` 订阅事件（`log:batch`、`task:progress`、`task:item`、`task:done`、`config:changed`）。改动绑定方法签名须同步前端调用。
 - 配置：新增字段在 `internal/config/schema.go` 加表单元数据即可，设置页由 `GetConfigSchema` 动态渲染，前端无需改动；保存走原子写。
-- 本地运行产物（均为生成物，已 ignore）：`config.yaml`、`app.db`、`logs/`、`frontend/wailsjs/`（Wails 生成的 TS 绑定，改动后端绑定后重新生成，勿手改）。
+- 本地运行产物（均为生成物，已 ignore）：`config.yaml`、`state.yaml`、`logs/`、`frontend/wailsjs/`（Wails 生成的 TS 绑定，改动后端绑定后重新生成，勿手改）。
+- 偏好/缓存/任务历史存于 `internal/store`（go-cache，进程内）；其中上次下载偏好与限流时间戳持久化到 `state.yaml`，缓存与任务历史重启即清空。不使用数据库，勿重新引入 SQLite。
 
 ## 参考文档
 

@@ -15,19 +15,18 @@ import (
 func (s *Service) GetAppInfo() AppInfo {
 	c := s.cfg()
 	return AppInfo{
-		Version:      "1.0.0",
-		ConfigPath:   s.deps.Config.Path(),
-		LogDir:       s.deps.Logs.LogDir(),
-		DownloadDir:  s.resolve(c.Download.DefaultDir),
-		Platform:     runtime.GOOS + "/" + runtime.GOARCH,
-		DatabasePath: s.deps.DB.Path(),
+		Version:     "1.0.0",
+		ConfigPath:  s.deps.Config.Path(),
+		LogDir:      s.deps.Logs.LogDir(),
+		DownloadDir: s.resolve(c.Download.DefaultDir),
+		Platform:    runtime.GOOS + "/" + runtime.GOARCH,
 	}
 }
 
 func (s *Service) GetTaskStatus() task.Progress { return s.tasks.Status() }
 
 func (s *Service) GetTaskHistory(limit int) ([]model.TaskRecord, error) {
-	return s.deps.DB.ListTaskHistory(limit)
+	return s.deps.Cache.ListTaskHistory(limit)
 }
 
 func (s *Service) OpenDownloadDir() error {
@@ -40,7 +39,7 @@ func (s *Service) OpenDownloadDir() error {
 
 func (s *Service) GetLastDownloadConfig() (LastDownloadConfig, error) {
 	fallback := LastDownloadConfig{Kind: "song", Quality: s.cfg().Download.DefaultQuality, Indexes: []int{}}
-	raw, err := s.deps.DB.GetLastDownloadConfig()
+	raw, err := s.deps.Cache.GetLastDownloadConfig()
 	if err != nil || strings.TrimSpace(raw) == "" {
 		return fallback, nil
 	}
@@ -65,7 +64,7 @@ func (s *Service) SaveLastDownloadConfig(c LastDownloadConfig) error {
 	if err != nil {
 		return err
 	}
-	return s.deps.DB.SetLastDownloadConfig(string(data))
+	return s.deps.Cache.SetLastDownloadConfig(string(data))
 }
 
 // ListSubFolders 返回目录的一级子目录，供音乐库工具预览扫描范围。

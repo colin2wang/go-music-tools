@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <!-- 主体渐变：左上鲜艳紫 → 右下天蓝 -->
+    <linearGradient id="body" gradientUnits="userSpaceOnUse" x1="120" y1="96" x2="400" y2="416">
+      <stop offset="0"   stop-color="#9d54ff"/>
+      <stop offset="0.5" stop-color="#7b74ff"/>
+      <stop offset="1"   stop-color="#21b5ff"/>
+    </linearGradient>
+
+    <!-- 右上角粉紫光晕 (增强对比) -->
+    <radialGradient id="pink" gradientUnits="userSpaceOnUse" cx="398" cy="118" r="240">
+      <stop offset="0"    stop-color="#ff69f5" stop-opacity="0.8"/>
+      <stop offset="0.5"  stop-color="#da70ff" stop-opacity="0.3"/>
+      <stop offset="1"    stop-color="#da70ff" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- 顶部高光 -->
+    <linearGradient id="sheen" gradientUnits="userSpaceOnUse" x1="256" y1="84" x2="256" y2="190">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- 模糊滤镜 -->
+    <filter id="blurSmall" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+    <filter id="blurBig" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="34"/>
+    </filter>
+
+    <!-- 白色图形微微的立体投影 -->
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- 将整个图标居中并放大 1.35 倍，以填满画布 -->
+  <g transform="translate(256, 256) scale(1.35) translate(-256, -256)">
+
+    <!-- 环境光晕 -->
+    <rect x="112" y="112" width="296" height="296" rx="80" fill="#6e6cf0" opacity="0.35" filter="url(#blurBig)"/>
+
+    <!-- 底部投影 -->
+    <rect x="94" y="106" width="334" height="334" rx="80" fill="#04070f" opacity="0.7" filter="url(#blurSmall)"/>
+
+    <!-- 圆角方形图标主体 -->
+    <rect x="84" y="84" width="344" height="344" rx="82" fill="url(#body)"/>
+    <rect x="84" y="84" width="344" height="344" rx="82" fill="url(#pink)"/>
+    <rect x="84" y="84" width="344" height="344" rx="82" fill="url(#sheen)"/>
+
+    <!-- 描边微高光 -->
+    <rect x="85" y="85" width="342" height="342" rx="81" fill="none" stroke="#ffffff" stroke-opacity="0.2" stroke-width="1.5"/>
+
+    <!-- 黑胶唱片图形 -->
+    <g fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round" filter="url(#dropShadow)">
+      <!-- 外圈 -->
+      <circle cx="256" cy="256" r="85"/>
+      <!-- 左上弧线 -->
+      <path d="M 225.8 220 A 47 47 0 0 0 209.2 251.9"/>
+      <!-- 右下弧线 -->
+      <path d="M 286.2 292 A 47 47 0 0 0 302.8 260.1"/>
+    </g>
+
+    <!-- 中心轴：白色圆环，中间圆孔透出底色渐变 -->
+    <path fill="#ffffff" fill-rule="evenodd" filter="url(#dropShadow)"
+          d="M 223 256 a 33 33 0 1 0 66 0 a 33 33 0 1 0 -66 0 Z
+             M 244 256 a 12 12 0 1 0 24 0 a 12 12 0 1 0 -24 0 Z"/>
+
+  </g>
+</svg>

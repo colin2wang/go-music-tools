@@ -62,7 +62,9 @@ export const useTaskStore = defineStore('task', {
 
     async refresh() {
       this.progress = await bindings.getTaskStatus()
-      if (this.progress && !this.progress.done) this.running = true
+      // 后端无任务时返回零值 Progress（task_id 为空），不能视为运行中
+      if (this.progress?.task_id && !this.progress.done) this.running = true
+      else if (this.progress && !this.progress.task_id) this.running = false
     },
 
     async refreshHistory() {

@@ -131,6 +131,18 @@ export interface OODownloadRequest {
   quality: string
 }
 
+export interface CacheRegionStat {
+  region: string
+  label: string
+  count: number
+}
+
+export interface CacheEntry {
+  key: string
+  preview: string
+  bytes: number
+}
+
 export type LibraryFixKind = 'lyrics' | 'cover' | 'artists' | 'metadata'
 
 export interface LibraryFixRequest {
@@ -155,7 +167,6 @@ export interface AppInfo {
   log_dir: string
   download_dir: string
   platform: string
-  database_path?: string
 }
 
 export interface TaskRecord {

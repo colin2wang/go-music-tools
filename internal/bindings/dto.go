@@ -2,15 +2,14 @@ package bindings
 
 // AppInfo 供顶部栏与底部状态条展示运行环境信息。
 type AppInfo struct {
-	Version      string `json:"version"`
-	ConfigPath   string `json:"config_path"`
-	LogDir       string `json:"log_dir"`
-	DownloadDir  string `json:"download_dir"`
-	Platform     string `json:"platform"`
-	DatabasePath string `json:"database_path"`
+	Version     string `json:"version"`
+	ConfigPath  string `json:"config_path"`
+	LogDir      string `json:"log_dir"`
+	DownloadDir string `json:"download_dir"`
+	Platform    string `json:"platform"`
 }
 
-// LastDownloadConfig 是下载工作台的「上次偏好」，存于 SQLite preferences 表。
+// LastDownloadConfig 是下载工作台的「上次偏好」，仅存于进程内存。
 type LastDownloadConfig struct {
 	Kind       string `json:"kind"`
 	ResourceID string `json:"resource_id"`

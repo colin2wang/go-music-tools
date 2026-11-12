@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { CheckCircle2, XCircle, SkipForward, Square, Activity, Clock3 } from 'lucide-vue-next'
 import { useTaskStore } from '@/stores/task'
 import StatCard from './StatCard.vue'
 
+const { t } = useI18n()
 const tasks = useTaskStore()
 
-const stage = computed(() => tasks.progress?.stage ?? '暂无任务')
+const stage = computed(() => tasks.progress?.stage ?? t('task.none'))
 const items = computed(() => tasks.items.slice(-40).reverse())
 const elapsed = computed(() => {
   if (!tasks.done) return ''
@@ -33,7 +35,7 @@ function statusColor(status: string) {
     <div class="mb-4 flex flex-wrap items-center gap-3">
       <div>
         <div class="flex items-center gap-2 text-[14px] font-semibold">
-          <Activity :size="15" class="text-[var(--brand-300)]" /> 任务进度
+          <Activity :size="15" class="text-[var(--brand-300)]" /> {{ t('task.title') }}
         </div>
         <p class="mt-1 text-[11.5px] text-[var(--text-muted)]">{{ stage }}</p>
       </div>
@@ -42,13 +44,13 @@ function statusColor(status: string) {
           <Clock3 :size="12" /> {{ elapsed }}
         </span>
         <button type="button" class="ghost-button flex h-8 items-center gap-1.5 px-3 text-[11.5px]" :disabled="!tasks.running" @click="tasks.cancel()">
-          <Square :size="12" /> 取消
+          <Square :size="12" /> {{ t('task.cancel') }}
         </button>
       </div>
     </div>
 
     <div class="mb-2 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
-      <span>{{ tasks.progress?.current_item || '等待任务启动' }}</span>
+      <span>{{ tasks.progress?.current_item || t('task.waiting') }}</span>
       <span>{{ tasks.progress?.current ?? 0 }} / {{ tasks.progress?.total || 0 }}</span>
     </div>
     <div class="h-2 overflow-hidden rounded-full bg-[rgba(148,163,184,0.12)]">
@@ -60,10 +62,10 @@ function statusColor(status: string) {
     </div>
 
     <div class="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-      <StatCard label="成功" :value="tasks.progress?.success ?? 0" tone="ok" :icon="CheckCircle2" />
-      <StatCard label="跳过" :value="tasks.progress?.skipped ?? 0" tone="warn" :icon="SkipForward" />
-      <StatCard label="失败" :value="tasks.progress?.failed ?? 0" tone="err" :icon="XCircle" />
-      <StatCard label="完成度" :value="`${tasks.percent}%`" tone="brand" :icon="Activity" />
+      <StatCard :label="t('common.success')" :value="tasks.progress?.success ?? 0" tone="ok" :icon="CheckCircle2" />
+      <StatCard :label="t('common.skipped')" :value="tasks.progress?.skipped ?? 0" tone="warn" :icon="SkipForward" />
+      <StatCard :label="t('common.failed')" :value="tasks.progress?.failed ?? 0" tone="err" :icon="XCircle" />
+      <StatCard :label="t('task.percent')" :value="`${tasks.percent}%`" tone="brand" :icon="Activity" />
     </div>
 
     <div v-if="tasks.done?.error" class="mt-3 rounded-lg border border-[rgba(239,68,68,0.35)] bg-[rgba(239,68,68,0.07)] p-3 text-[11.5px] text-[var(--err)]">

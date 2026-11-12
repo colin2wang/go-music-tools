@@ -1,23 +1,30 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { FolderOpen, Settings, Square, Sparkles, Radio, ChevronRight } from 'lucide-vue-next'
 import { useTaskStore } from '@/stores/task'
 import { useConfigStore } from '@/stores/config'
 import { bindings } from '@/api/bindings'
+import LanguageSwitcher from './LanguageSwitcher.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { t, te } = useI18n()
 const tasks = useTaskStore()
 const config = useConfigStore()
 
-const title = computed(() => (route.meta.title as string) ?? '工作台')
+const title = computed(() => {
+  const name = route.name as string | undefined
+  if (name && te(`router.${name}`)) return t(`router.${name}`)
+  return t('layout.workspace')
+})
 const statusText = computed(() => {
   const p = tasks.progress
-  if (!p) return '空闲'
-  if (p.cancelled) return '已取消'
-  if (p.done) return p.error ? '执行失败' : '已完成'
-  return p.stage || '运行中'
+  if (!p) return t('layout.idle')
+  if (p.cancelled) return t('layout.cancelled')
+  if (p.done) return p.error ? t('layout.failed') : t('layout.completed')
+  return p.stage || t('layout.running')
 })
 const statusTone = computed(() => {
   const p = tasks.progress
@@ -36,7 +43,7 @@ async function openDownloads() {
       <Sparkles :size="16" class="shrink-0 text-[var(--brand-300)]" />
       <span class="truncate text-[15px] font-semibold">{{ title }}</span>
       <ChevronRight :size="14" class="hidden text-[var(--text-muted)] sm:block" />
-      <span class="hidden truncate text-[12px] text-[var(--text-muted)] sm:block">Music Tools 控制台</span>
+      <span class="hidden truncate text-[12px] text-[var(--text-muted)] sm:block">{{ t('layout.console') }}</span>
     </div>
 
     <div class="ml-auto flex items-center gap-3">
@@ -59,23 +66,24 @@ async function openDownloads() {
         :disabled="!tasks.running"
         @click="tasks.cancel()"
       >
-        <Square :size="13" /> 取消任务
+        <Square :size="13" /> {{ t('layout.cancelTask') }}
       </button>
       <button type="button" class="ghost-button flex h-9 items-center gap-2 px-3 text-[12px]" @click="openDownloads">
-        <FolderOpen :size="14" /> 下载目录
+        <FolderOpen :size="14" /> {{ t('layout.downloadDir') }}
       </button>
       <button
         type="button"
         class="ghost-button flex h-9 w-9 items-center justify-center"
-        title="设置"
+        :title="t('router.settings')"
         @click="router.push('/settings')"
       >
         <Settings :size="15" />
       </button>
       <div class="hidden items-center gap-2 border-l border-[var(--border-soft)] pl-3 text-[11px] text-[var(--text-muted)] lg:flex">
         <span class="h-1.5 w-1.5 rounded-full bg-[var(--ok)] shadow-[0_0_8px_#22C55E]" />
-        {{ config.appInfo?.platform ?? '桌面端' }}
+        {{ config.appInfo?.platform ?? t('layout.desktop') }}
       </div>
+      <LanguageSwitcher />
     </div>
   </header>
 </template>
