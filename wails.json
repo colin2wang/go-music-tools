@@ -1,0 +1,24 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "go-music-tools",
+  "outputfilename": "go-music-tools",
+  "frontend:install": "pnpm install",
+  "frontend:build": "pnpm run build",
+  "frontend:dev:watcher": "pnpm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "go-music-tools"
+  },
+  "info": {
+    "productName": "Music Tools",
+    "productVersion": "1.0.0",
+    "description": "音乐下载与整理工作台",
+    "comments": "Go + Wails + Vue + TypeScript"
+  },
+  "windows": {
+    "width": 1440,
+    "height": 900,
+    "minWidth": 1024,
+    "minHeight": 680
+  }
+}

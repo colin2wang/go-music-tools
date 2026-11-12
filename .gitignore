@@ -1,0 +1,30 @@
+
+# Wails
+build/bin
+
+# Node
+frontend/dist/
+frontend/node_modules/
+frontend/wailsjs/
+
+app.db
+app.db-shm
+app.db-wal
+logs/
+downloads/
+*.log
+*.exe
+.DS_Store
+
+# 本机用户配置（首次启动自动生成）
+config.yaml
+
+# IDEs
+.idea/
+
+# AI 编码工具本地状态
+.atomcode/
+.codebuddy/
+
+# agent 生成的提交信息草稿
+COMMIT.md

@@ -1,0 +1,30 @@
+:root {
+  --bg-deep: #0b1020;
+  --bg-panel: #131a2e;
+  --bg-raised: #1b2440;
+  --border-soft: rgba(148, 163, 184, 0.14);
+  --border-strong: rgba(139, 124, 246, 0.35);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --brand-500: #6c5ce7;
+  --brand-400: #8b7cf6;
+  --brand-300: #22d3ee;
+  --ok: #22c55e;
+  --warn: #f59e0b;
+  --err: #ef4444;
+  --info: #38bdf8;
+  --gradient-brand: linear-gradient(120deg, #6c5ce7 0%, #8b7cf6 48%, #22d3ee 100%);
+  --gradient-soft: linear-gradient(135deg, rgba(108, 92, 231, 0.18), rgba(34, 211, 238, 0.08));
+  --glass: rgba(19, 26, 46, 0.72);
+  --glass-strong: rgba(27, 36, 64, 0.88);
+  --shadow-panel: 0 12px 32px -12px rgba(0, 0, 0, 0.65);
+}
+
+:root {
+  color-scheme: dark;
+  --background: 240 24% 15%;
+  --foreground: 210 40% 98%;
+  --card: 229 33% 15%;
+  --card-foreground: 210 40% 98%;
+}

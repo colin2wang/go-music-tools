@@ -1,0 +1,189 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #app {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: var(--bg-deep);
+    background-image:
+      radial-gradient(900px 520px at 12% -8%, rgba(108, 92, 231, 0.18), transparent 70%),
+      radial-gradient(760px 460px at 92% 4%, rgba(34, 211, 238, 0.12), transparent 72%),
+      linear-gradient(180deg, #0b1020 0%, #090e1c 100%);
+    color: var(--text-primary);
+    font-family: '"Source Han Sans SC"', '"Noto Sans SC"', '"Microsoft YaHei"', system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  h1 {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  h2,
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.22);
+    border-radius: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(139, 124, 246, 0.5);
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font-family: inherit;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    background: var(--glass);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    box-shadow: var(--shadow-panel);
+    backdrop-filter: blur(18px);
+  }
+
+  .glass-raised {
+    background: var(--glass-strong);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    box-shadow: var(--shadow-panel);
+  }
+
+  .brand-text {
+    background: var(--gradient-brand);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .brand-button {
+    background: var(--gradient-brand);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  }
+
+  .brand-button:hover:not(:disabled) {
+    filter: brightness(1.12);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 22px -8px rgba(108, 92, 231, 0.8);
+  }
+
+  .brand-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .ghost-button {
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid var(--border-soft);
+    color: var(--text-secondary);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 160ms ease;
+  }
+
+  .ghost-button:hover:not(:disabled) {
+    background: rgba(139, 124, 246, 0.12);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+  }
+
+  .ghost-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .field-input {
+    width: 100%;
+    background: rgba(11, 16, 32, 0.72);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 9px 12px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .field-input:focus {
+    border-color: var(--border-strong);
+    box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.16);
+  }
+
+  .field-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .page-enter {
+    animation: fade-up 180ms ease-out both;
+  }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .muted {
+    color: var(--text-secondary);
+  }
+}
+
+@keyframes fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes log-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
