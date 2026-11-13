@@ -7,7 +7,6 @@ import { useConfigStore } from '@/stores/config'
 import { useTaskStore } from '@/stores/task'
 import QualitySelect from '@/components/common/QualitySelect.vue'
 import IndexPicker from '@/components/common/IndexPicker.vue'
-import TaskProgressCard from '@/components/common/TaskProgressCard.vue'
 import type { DownloadRequest } from '@/types'
 
 type Kind = DownloadRequest['kind']
@@ -79,9 +78,15 @@ async function start() {
     quality: quality.value,
     indexes: needsIndexes.value ? indexes.value : [],
   }
-  await bindings.download(request)
-  flash(true, t('download.started'))
-  starting.value = false
+  try {
+    await bindings.download(request)
+    flash(true, t('download.started'))
+    await tasks.refresh()
+  } catch (err) {
+    flash(false, err instanceof Error ? err.message : String(err))
+  } finally {
+    starting.value = false
+  }
 }
 
 async function openDir() {
@@ -100,7 +105,7 @@ function formatTime(seconds: number): string {
     <header class="mb-5 flex flex-wrap items-end gap-3">
       <div>
         <div class="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-300)]">
-          <Download :size="13" /> Download workspace
+          <Download :size="13" /> YY Music
         </div>
         <h1>{{ t('download.title') }}</h1>
         <p class="muted mt-1.5 text-[12.5px]">
@@ -141,6 +146,9 @@ function formatTime(seconds: number): string {
           </div>
         </section>
 
+      </div>
+
+      <div class="space-y-4">
         <section class="glass-panel space-y-4 p-5">
           <div>
             <label class="mb-1.5 flex items-center gap-1.5 text-[12px] font-medium text-[var(--text-secondary)]">
@@ -158,7 +166,7 @@ function formatTime(seconds: number): string {
           <IndexPicker v-if="needsIndexes" v-model="indexRaw" @change="(v) => (indexes = v)" />
 
           <div class="flex items-center gap-3 border-t border-[var(--border-soft)] pt-4">
-            <button type="button" class="brand-button flex h-10 flex-1 items-center justify-center gap-2 text-[13px]" :disabled="starting || tasks.running" @click="start">
+            <button type="button" class="brand-button flex h-10 flex-1 items-center justify-center gap-2 text-[13px]" :disabled="starting" @click="start">
               <Loader2 v-if="starting" :size="15" class="animate-spin" />
               <Play v-else :size="15" />
               {{ t('download.start') }}
@@ -169,49 +177,45 @@ function formatTime(seconds: number): string {
           </div>
         </section>
       </div>
-
-      <div class="space-y-4">
-        <TaskProgressCard />
-
-        <section class="glass-panel p-5">
-          <div class="mb-3 flex items-center gap-2 text-[13px] font-semibold">
-            <History :size="15" class="text-[var(--brand-300)]" /> {{ t('download.history') }}
-          </div>
-          <div v-if="!tasks.history.length" class="py-6 text-center text-[12px] text-[var(--text-muted)]">
-            {{ t('download.noHistory') }}
-          </div>
-          <div v-else class="overflow-x-auto">
-            <table class="w-full text-left text-[11.5px]">
-              <thead class="text-[var(--text-muted)]">
-                <tr class="border-b border-[var(--border-soft)]">
-                  <th class="pb-2 font-medium">{{ t('download.thTime') }}</th>
-                  <th class="pb-2 font-medium">{{ t('download.thKind') }}</th>
-                  <th class="pb-2 font-medium">{{ t('download.thQuality') }}</th>
-                  <th class="pb-2 font-medium">{{ t('common.success') }}</th>
-                  <th class="pb-2 font-medium">{{ t('common.skipped') }}</th>
-                  <th class="pb-2 font-medium">{{ t('common.failed') }}</th>
-                  <th class="pb-2 font-medium">{{ t('download.thAction') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in tasks.history" :key="row.id" class="border-b border-[var(--border-soft)] last:border-b-0">
-                  <td class="py-2 font-mono text-[var(--text-secondary)]">{{ formatTime(row.created_at) }}</td>
-                  <td class="py-2">{{ row.kind }}</td>
-                  <td class="py-2 text-[var(--text-secondary)]">{{ row.quality || '—' }}</td>
-                  <td class="py-2 text-[var(--ok)]">{{ row.success }}</td>
-                  <td class="py-2 text-[var(--warn)]">{{ row.skipped }}</td>
-                  <td class="py-2 text-[var(--err)]">{{ row.failed }}</td>
-                  <td class="py-2">
-                    <button type="button" class="flex items-center gap-1 text-[11px] text-[var(--brand-400)] hover:text-[var(--brand-300)]" @click="openDir">
-                      <FolderOpen :size="12" /> {{ t('common.openContaining') }}
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
     </div>
+
+    <section class="glass-panel mt-4 p-5">
+      <div class="mb-3 flex items-center gap-2 text-[13px] font-semibold">
+        <History :size="15" class="text-[var(--brand-300)]" /> {{ t('download.history') }}
+      </div>
+      <div v-if="!tasks.history.length" class="py-6 text-center text-[12px] text-[var(--text-muted)]">
+        {{ t('download.noHistory') }}
+      </div>
+      <div v-else class="overflow-x-auto">
+        <table class="w-full text-left text-[11.5px]">
+          <thead class="text-[var(--text-muted)]">
+            <tr class="border-b border-[var(--border-soft)]">
+              <th class="pb-2 font-medium">{{ t('download.thTime') }}</th>
+              <th class="pb-2 font-medium">{{ t('download.thKind') }}</th>
+              <th class="pb-2 font-medium">{{ t('download.thQuality') }}</th>
+              <th class="pb-2 font-medium">{{ t('common.success') }}</th>
+              <th class="pb-2 font-medium">{{ t('common.skipped') }}</th>
+              <th class="pb-2 font-medium">{{ t('common.failed') }}</th>
+              <th class="pb-2 font-medium">{{ t('download.thAction') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in tasks.history" :key="row.id" class="border-b border-[var(--border-soft)] last:border-b-0">
+              <td class="py-2 font-mono text-[var(--text-secondary)]">{{ formatTime(row.created_at) }}</td>
+              <td class="py-2">{{ row.kind }}</td>
+              <td class="py-2 text-[var(--text-secondary)]">{{ row.quality || '—' }}</td>
+              <td class="py-2 text-[var(--ok)]">{{ row.success }}</td>
+              <td class="py-2 text-[var(--warn)]">{{ row.skipped }}</td>
+              <td class="py-2 text-[var(--err)]">{{ row.failed }}</td>
+              <td class="py-2">
+                <button type="button" class="flex items-center gap-1 text-[11px] text-[var(--brand-400)] hover:text-[var(--brand-300)]" @click="openDir">
+                  <FolderOpen :size="12" /> {{ t('common.openContaining') }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 </template>

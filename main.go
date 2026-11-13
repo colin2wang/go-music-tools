@@ -28,13 +28,22 @@ func main() {
 
 func run() error {
 	root := appRoot()
-	migrateLegacyYAML(root)
 	store := config.NewStore(filepath.Join(root, "config.yml"))
-	if err := store.Load(); err != nil {
-		return fmt.Errorf("加载配置: %w", err)
-	}
 
-	hub, err := logx.NewHub(store.Get().Logging, root)
+	// wails build 生成绑定时会以 -tags bindings 编译并执行本程序（不启动窗口），
+	// 该模式下跳过磁盘副作用：不迁移/写出 config.yml，日志目录指向临时目录，
+	// 避免构建过程在项目根目录生成 config.yml 与 logs/。
+	var hub *logx.Hub
+	var err error
+	if bindingGeneration {
+		hub, err = logx.NewHub(store.Get().Logging, os.TempDir())
+	} else {
+		migrateLegacyYAML(root)
+		if err = store.Load(); err != nil {
+			return fmt.Errorf("加载配置: %w", err)
+		}
+		hub, err = logx.NewHub(store.Get().Logging, root)
+	}
 	if err != nil {
 		return fmt.Errorf("初始化日志: %w", err)
 	}

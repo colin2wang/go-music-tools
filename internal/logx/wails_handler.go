@@ -98,6 +98,13 @@ func (b *batchHandler) Flush() {
 }
 
 func (b *batchHandler) Close() {
-	b.once.Do(func() { close(b.stop) })
+	b.once.Do(func() {
+		// 先停用事件推送再停 loop：退出时向已销毁的 WebView 推送可能阻塞，
+		// 导致 Hub.Close 等待 b.done 卡死、进程不退出。日志文件由 Handle 直接落盘，不受影响。
+		b.mu.Lock()
+		b.emit = nil
+		b.mu.Unlock()
+		close(b.stop)
+	})
 	<-b.done
 }

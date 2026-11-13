@@ -10,7 +10,6 @@ import { bindings } from '@/api/bindings'
 import { useConfigStore } from '@/stores/config'
 import { useTaskStore } from '@/stores/task'
 import FolderPicker from '@/components/common/FolderPicker.vue'
-import TaskProgressCard from '@/components/common/TaskProgressCard.vue'
 import { LIBRARY_TOOLS, type LibraryFixKind, type TaskItemResult } from '@/types'
 
 type OptionKey = 'only_missing' | 'force' | 'recursive' | 'continue_on_error'
@@ -46,7 +45,11 @@ const notice = ref<{ ok: boolean; text: string } | null>(null)
 const expanded = ref<string | null>(null)
 
 const currentTool = computed(() => LIBRARY_TOOLS.find((item) => item.kind === kind.value) ?? LIBRARY_TOOLS[0])
-const rows = computed(() => tasks.items)
+// 只取音乐库修补任务的子项，避免与工作台下载任务的数据串在一起。
+const libraryTask = computed(() => tasks.entries.find((e) => e.kind.startsWith('library:')) ?? null)
+const rows = computed(() => libraryTask.value?.items ?? [])
+const libraryRunning = computed(() => libraryTask.value?.status === 'running')
+const libraryFailed = computed(() => libraryTask.value?.failed ?? 0)
 const previewRows = computed(() => folders.value.map((path) => path.split(/[\\/]/).pop() ?? path))
 
 watch(
@@ -87,14 +90,18 @@ async function start() {
   if (!folders.value.length) { flash(false, t('library.noSubdirs')); return }
   starting.value = true
   expanded.value = null
-  tasks.beginOptimistic(`library:${kind.value}`, folders.value.length)
   const id = await bindings.runLibraryFix({
     directory: directory.value.trim(), kind: kind.value, ...options.value,
   }).catch(fail)
   starting.value = false
-  if (!id) { tasks.running = false; return }
+  if (!id) return
   flash(true, t('library.started', { tool: currentTool.value.title, n: folders.value.length }))
   await tasks.refresh()
+}
+
+function cancelLibrary() {
+  const id = libraryTask.value?.task_id
+  if (id) void tasks.cancelTask(id)
 }
 
 async function openDirectory() {
@@ -210,12 +217,12 @@ async function openDirectory() {
           </div>
           <div class="mt-4 space-y-2 border-t border-[var(--border-soft)] pt-4">
             <button type="button" class="brand-button flex h-10 w-full items-center justify-center gap-2 text-[12.5px]"
-              :disabled="starting || tasks.running || !folders.length" @click="start">
+              :disabled="starting || !folders.length" @click="start">
               <Loader2 v-if="starting" :size="15" class="animate-spin" /><Play v-else :size="15" />
               {{ t('library.run', { tool: currentTool.title }) }}
             </button>
             <button type="button" class="ghost-button flex h-9 w-full items-center justify-center gap-2 text-[11.5px] text-[var(--err)]"
-              :disabled="!tasks.running" @click="tasks.cancel()">
+              :disabled="!libraryRunning" @click="cancelLibrary">
               <Square :size="12" /> {{ t('library.cancelTask') }}
             </button>
             <p v-if="notice" class="text-[11px] leading-relaxed" :class="notice.ok ? 'text-[var(--ok)]' : 'text-[var(--err)]'">{{ notice.text }}</p>
@@ -234,13 +241,11 @@ async function openDirectory() {
             </div>
             <div class="rounded-xl border border-[var(--border-soft)] p-2.5">
               <div class="text-[10.5px] text-[var(--text-muted)]">{{ t('library.failedDirs') }}</div>
-              <div class="mt-0.5 text-[18px] font-semibold text-[var(--err)]">{{ tasks.progress?.failed ?? 0 }}</div>
+              <div class="mt-0.5 text-[18px] font-semibold text-[var(--err)]">{{ libraryFailed }}</div>
             </div>
           </div>
         </section>
       </div>
     </div>
-
-    <div class="mt-4"><TaskProgressCard /></div>
   </div>
 </template>

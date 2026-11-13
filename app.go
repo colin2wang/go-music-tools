@@ -27,7 +27,8 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
 	a.svc.SetEmitter(func(event string, payload any) {
-		if a.ctx != nil {
+		// 应用关闭后不再向已销毁的 WebView 推送事件，避免 shutdown 阶段阻塞退出。
+		if a.ctx != nil && a.ctx.Err() == nil {
 			runtime.EventsEmit(a.ctx, event, payload)
 		}
 	})

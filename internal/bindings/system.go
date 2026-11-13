@@ -23,7 +23,11 @@ func (s *Service) GetAppInfo() AppInfo {
 	}
 }
 
+// GetTaskStatus 是兼容视图：运行中任务的进度，或最近结束任务的进度。
 func (s *Service) GetTaskStatus() task.Progress { return s.tasks.Status() }
+
+// GetTaskBoard 返回任务面板的全量快照（通道状态 + 最近 50 个任务的完整状态）。
+func (s *Service) GetTaskBoard() task.TaskBoard { return s.tasks.Board() }
 
 func (s *Service) GetTaskHistory(limit int) ([]model.TaskRecord, error) {
 	return s.deps.Cache.ListTaskHistory(limit)

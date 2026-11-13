@@ -34,10 +34,49 @@ export interface ConfigValues {
   [group: string]: { [field: string]: string | number | boolean }
 }
 
+export type TaskLane = 'workbench' | 'oomusic'
+export type TaskStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled' | 'removed'
+
+export interface LaneState {
+  lane: TaskLane
+  running: string
+  queued: number
+}
+
+/** 一个独立任务的完整生命周期记录；items 是最近若干条的预览。 */
+export interface TaskEntry {
+  task_id: string
+  kind: string
+  lane: TaskLane
+  status: TaskStatus
+  stage: string
+  enqueued_at: number
+  started_at: number
+  finished_at: number
+  elapsed_ms: number
+  current_item: string
+  current: number
+  total: number
+  success: number
+  skipped: number
+  failed: number
+  cancelled: boolean
+  error: string
+  items: TaskItemResult[]
+  item_count: number
+  can_retry: boolean
+}
+
+export interface TaskBoard {
+  lanes: LaneState[]
+  tasks: TaskEntry[]
+}
+
 export interface TaskProgress {
   task_id: string
   kind: string
   stage: string
+  status: 'running' | 'done' | ''
   current_item: string
   current: number
   total: number
@@ -47,6 +86,27 @@ export interface TaskProgress {
   done: boolean
   cancelled: boolean
   error: string
+  lane?: TaskLane
+  enqueued_at?: number
+  started_at?: number
+  elapsed_ms?: number
+  can_retry?: boolean
+}
+
+export interface QueuedTask {
+  task_id: string
+  kind: string
+  total: number
+  enqueued_at: number
+  lane?: TaskLane
+  status?: string
+}
+
+export interface TaskQueueSnapshot {
+  current: TaskProgress | null
+  queued: QueuedTask[]
+  lanes?: LaneState[]
+  tasks?: TaskEntry[]
 }
 
 export interface TaskItemResult {
@@ -59,6 +119,7 @@ export interface TaskItemResult {
 export interface TaskItemEvent {
   task_id: string
   item: TaskItemResult
+  lane?: TaskLane
 }
 
 export interface TaskDone {
@@ -71,6 +132,10 @@ export interface TaskDone {
   error: string
   items: TaskItemResult[]
   elapsed_ms: number
+  lane?: TaskLane
+  status?: string
+  started_at?: number
+  finished_at?: number
 }
 
 export interface DownloadRequest {

@@ -115,13 +115,37 @@ func (s *Service) httpClient() *httpclient.Client {
 	return httpclient.New(c.Network, c.API.InsecureSkipVerify, s.deps.Logger)
 }
 
+// Start 保留原有导出签名以兼容 Wails 绑定生成；内部提交统一走 start。
 func (s *Service) Start(kind string, total int, fn task.TaskFunc) (string, error) {
-	return s.tasks.Start(kind, total, fn)
+	return s.start(kind, total, fn)
+}
+
+// start 提交任务，可附加 task.WithRetry 等选项。
+func (s *Service) start(kind string, total int, fn task.TaskFunc, opts ...task.StartOption) (string, error) {
+	return s.tasks.Start(kind, total, fn, opts...)
 }
 
 func (s *Service) ConfigPath() string { return s.deps.Config.Path() }
 
+// CancelTask 取消两条通道中全部正在运行的任务（顶栏按钮与退出流程复用）。
 func (s *Service) CancelTask() bool { return s.tasks.Cancel() }
+
+// CancelTaskByID 只取消指定任务：运行中发取消信号，排队中直接移出队列。
+func (s *Service) CancelTaskByID(taskID string) bool { return s.tasks.CancelByID(taskID) }
+
+// RetryFailedItems 用原请求里失败的子项重建新任务，投递回原通道并返回新的 task_id。
+func (s *Service) RetryFailedItems(taskID string) (string, error) {
+	return s.tasks.RetryFailedItems(taskID)
+}
+
+// GetTaskQueue 返回运行进度、等待队列、通道状态与任务注册表的兼容快照。
+func (s *Service) GetTaskQueue() task.QueueSnapshot { return s.tasks.Snapshot() }
+
+// RemoveQueuedTask 把一个尚未开始的任务移出等待队列。
+func (s *Service) RemoveQueuedTask(taskID string) bool { return s.tasks.RemoveQueued(taskID) }
+
+// ClearTaskQueue 清空全部等待中的任务，返回清除的数量。
+func (s *Service) ClearTaskQueue() int { return s.tasks.ClearQueue() }
 
 func (s *Service) Close() error {
 	s.tasks.Cancel()

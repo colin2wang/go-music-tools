@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -107,6 +108,19 @@ func (c *Client) SetOrigin(origin string) { c.origin = strings.TrimRight(origin,
 func (c *Client) SetUserAgent(ua string)  { c.ua = ua }
 
 func (c *Client) Request(ctx context.Context, method, rawURL string, body io.Reader, headers map[string]string) (*Response, error) {
+	var params string
+	if body != nil {
+		// 请求体都是小体积 JSON/表单，读出来既能打 debug 日志也能复用为请求体。
+		data, err := io.ReadAll(io.LimitReader(body, 64<<10))
+		if err != nil {
+			return nil, fmt.Errorf("读取请求体: %w", err)
+		}
+		body = bytes.NewReader(data)
+		params = string(data)
+	}
+	if c.logger != nil {
+		c.logger.Debug("HTTP 请求", "method", method, "url", rawURL, "params", params)
+	}
 	resp, err := c.Do(ctx, method, rawURL, body, headers)
 	if err != nil {
 		return nil, err
@@ -116,7 +130,19 @@ func (c *Client) Request(ctx context.Context, method, rawURL string, body io.Rea
 	if err != nil {
 		return nil, fmt.Errorf("读取响应体: %w", err)
 	}
+	if c.logger != nil {
+		c.logger.Debug("HTTP 响应", "status", resp.StatusCode, "url", rawURL, "body", truncateForLog(data))
+	}
 	return &Response{StatusCode: resp.StatusCode, Body: data, Header: resp.Header.Clone()}, nil
+}
+
+// truncateForLog 截断超长响应体，避免 debug 日志被单曲列表等大 JSON 撑爆。
+func truncateForLog(data []byte) string {
+	const max = 4096
+	if len(data) <= max {
+		return string(data)
+	}
+	return string(data[:max]) + fmt.Sprintf("...(截断，共 %d 字节)", len(data))
 }
 
 func (c *Client) Get(ctx context.Context, rawURL string, headers map[string]string) (*Response, error) {
@@ -161,6 +187,9 @@ func IsURLExpired(err error) bool {
 
 // Download 流式写入 .part 后原子 rename，取消时清理临时文件。
 func (c *Client) Download(ctx context.Context, rawURL, dest string, headers map[string]string, progress func(written, total int64)) (string, error) {
+	if c.logger != nil {
+		c.logger.Debug("下载音频", "url", rawURL, "dest", dest)
+	}
 	resp, err := c.Do(ctx, http.MethodGet, rawURL, nil, headers)
 	if err != nil {
 		return "", err

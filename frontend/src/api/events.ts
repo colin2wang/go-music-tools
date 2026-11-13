@@ -3,6 +3,7 @@ export const EventNames = {
   TASK_PROGRESS: 'task:progress',
   TASK_ITEM: 'task:item',
   TASK_DONE: 'task:done',
+  TASK_QUEUED: 'task:queued',
   CONFIG_CHANGED: 'config:changed',
   APP_READY: 'app:ready',
 } as const

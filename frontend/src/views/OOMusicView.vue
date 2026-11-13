@@ -9,7 +9,6 @@ import { bindings } from '@/api/bindings'
 import { useConfigStore } from '@/stores/config'
 import { useTaskStore } from '@/stores/task'
 import QualitySelect from '@/components/common/QualitySelect.vue'
-import TaskProgressCard from '@/components/common/TaskProgressCard.vue'
 import { OO_QUALITY_LEVELS, type OODetail, type OOSong, type QualityOption } from '@/types'
 
 const { t } = useI18n()
@@ -42,7 +41,10 @@ const qualityRows = computed(() => OO_QUALITY_LEVELS.map((level) => ({
 const lyricLines = computed(() =>
   (detail.value?.lyric_text || detail.value?.lyric_lrc || '').split('\n').filter(Boolean).slice(0, lyricOpen.value ? 40 : 5),
 )
-const failedItems = computed(() => tasks.items.filter((item) => item.status === 'failed'))
+// OO Music 独立通道：统计与失败项只取该通道的数据，不受工作台任务影响。
+const ooSummary = computed(() => tasks.laneSummary('oomusic'))
+const ooRunning = computed(() => !!tasks.laneActive('oomusic'))
+const failedItems = computed(() => tasks.laneItems('oomusic').filter((item) => item.status === 'failed'))
 
 watch(
   () => config.values.advanced?.oo_music_default_quality,
@@ -278,24 +280,24 @@ function pickQuality(value: string) {
           <div class="text-[13px] font-semibold">{{ t('oo.console') }}</div>
           <QualitySelect v-model="quality" source="oo" :label="t('oo.targetQuality')" @update:modelValue="qualityTouched = true" />
           <button type="button" class="brand-button flex h-10 w-full items-center justify-center gap-2 text-[12.5px]"
-            :disabled="!active || starting || tasks.running" @click="downloadOne()">
+            :disabled="!active || starting" @click="downloadOne()">
             <Download :size="15" /> {{ t('oo.downloadOne') }}
           </button>
           <button type="button" class="ghost-button flex h-10 w-full items-center justify-center gap-2 text-[12.5px]"
-            :disabled="!results.length || starting || tasks.running" @click="downloadAll">
+            :disabled="!results.length || starting" @click="downloadAll">
             <ListMusic :size="15" /> {{ t('oo.downloadAll', { n: results.length }) }}
           </button>
           <button type="button" class="ghost-button flex h-9 w-full items-center justify-center gap-2 text-[11.5px] text-[var(--err)]"
-            :disabled="!tasks.running" @click="tasks.cancel()">
+            :disabled="!ooRunning" @click="tasks.cancelLane('oomusic')">
             <Square :size="12" /> {{ t('oo.cancelCurrent') }}
           </button>
           <p class="text-[11px] leading-relaxed text-[var(--text-muted)]">
             {{ t('oo.skipHint') }}
           </p>
           <div class="grid grid-cols-3 gap-2 border-t border-[var(--border-soft)] pt-3 text-center">
-            <div><div class="text-[16px] font-semibold text-[var(--ok)]">{{ tasks.progress?.success ?? 0 }}</div><div class="text-[10px] text-[var(--text-muted)]">{{ t('common.success') }}</div></div>
-            <div><div class="text-[16px] font-semibold text-[var(--warn)]">{{ tasks.progress?.skipped ?? 0 }}</div><div class="text-[10px] text-[var(--text-muted)]">{{ t('common.skipped') }}</div></div>
-            <div><div class="text-[16px] font-semibold text-[var(--err)]">{{ tasks.progress?.failed ?? 0 }}</div><div class="text-[10px] text-[var(--text-muted)]">{{ t('common.failed') }}</div></div>
+            <div><div class="text-[16px] font-semibold text-[var(--ok)]">{{ ooSummary.success }}</div><div class="text-[10px] text-[var(--text-muted)]">{{ t('common.success') }}</div></div>
+            <div><div class="text-[16px] font-semibold text-[var(--warn)]">{{ ooSummary.skipped }}</div><div class="text-[10px] text-[var(--text-muted)]">{{ t('common.skipped') }}</div></div>
+            <div><div class="text-[16px] font-semibold text-[var(--err)]">{{ ooSummary.failed }}</div><div class="text-[10px] text-[var(--text-muted)]">{{ t('common.failed') }}</div></div>
           </div>
         </section>
 
@@ -314,7 +316,5 @@ function pickQuality(value: string) {
         </section>
       </div>
     </div>
-
-    <div class="mt-4"><TaskProgressCard /></div>
   </div>
 </template>

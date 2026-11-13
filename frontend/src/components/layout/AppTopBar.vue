@@ -2,11 +2,12 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { FolderOpen, Settings, Square, Sparkles, Radio, ChevronRight } from 'lucide-vue-next'
+import { FolderOpen, Settings, Square, Sparkles, Radio, ChevronRight, CheckCircle2, SkipForward, XCircle } from 'lucide-vue-next'
 import { useTaskStore } from '@/stores/task'
 import { useConfigStore } from '@/stores/config'
 import { bindings } from '@/api/bindings'
 import LanguageSwitcher from './LanguageSwitcher.vue'
+import TaskMiniDonut from '@/components/common/TaskMiniDonut.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,18 +20,16 @@ const title = computed(() => {
   if (name && te(`router.${name}`)) return t(`router.${name}`)
   return t('layout.workspace')
 })
+
+// 顶栏汇总两条通道：多于一个运行中任务时显示通道数，否则显示该任务的阶段。
 const statusText = computed(() => {
-  const p = tasks.progress
-  if (!p) return t('layout.idle')
-  if (p.cancelled) return t('layout.cancelled')
-  if (p.done) return p.error ? t('layout.failed') : t('layout.completed')
-  return p.stage || t('layout.running')
+  if (!tasks.running) return t('layout.idle')
+  const list = tasks.activeTasks
+  if (list.length > 1) return t('layout.multiRunning', { n: list.length })
+  return list[0]?.stage || t('layout.running')
 })
-const statusTone = computed(() => {
-  const p = tasks.progress
-  if (!p || p.done) return 'idle'
-  return 'active'
-})
+const statusTone = computed(() => (tasks.running ? 'active' : 'idle'))
+const summary = computed(() => tasks.summary)
 
 async function openDownloads() {
   await bindings.openDownloadDir()
@@ -47,6 +46,10 @@ async function openDownloads() {
     </div>
 
     <div class="ml-auto flex items-center gap-3">
+      <div class="hidden items-center md:flex">
+        <TaskMiniDonut :summary="summary" />
+      </div>
+
       <div
         class="hidden items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] md:flex"
         :class="statusTone === 'active'
@@ -54,19 +57,29 @@ async function openDownloads() {
           : 'border-[var(--border-soft)] bg-[rgba(148,163,184,0.05)] text-[var(--text-secondary)]'"
       >
         <Radio :size="13" :class="statusTone === 'active' ? 'animate-pulse-soft' : ''" />
-        <span class="font-medium">{{ statusText }}</span>
-        <span v-if="tasks.progress && tasks.progress.total > 0" class="text-[var(--text-muted)]">
-          {{ tasks.progress.current }}/{{ tasks.progress.total }}
+        <span class="max-w-[180px] truncate font-medium">{{ statusText }}</span>
+        <span v-if="summary.total > 0" class="font-mono text-[var(--text-muted)]">
+          {{ summary.current }}/{{ summary.total }}
         </span>
+      </div>
+
+      <div
+        v-if="summary.total > 0"
+        class="hidden items-center gap-2.5 rounded-full border border-[var(--border-soft)] bg-[rgba(148,163,184,0.05)] px-3 py-1.5 text-[11.5px] xl:flex"
+      >
+        <span class="flex items-center gap-1 text-[var(--ok)]"><CheckCircle2 :size="12" /> {{ summary.success }}</span>
+        <span class="flex items-center gap-1 text-[var(--warn)]"><SkipForward :size="12" /> {{ summary.skipped }}</span>
+        <span class="flex items-center gap-1 text-[var(--err)]"><XCircle :size="12" /> {{ summary.failed }}</span>
+        <span class="font-mono text-[var(--brand-300)]">{{ summary.percent }}%</span>
       </div>
 
       <button
         type="button"
         class="ghost-button flex h-9 items-center gap-2 px-3 text-[12px]"
         :disabled="!tasks.running"
-        @click="tasks.cancel()"
+        @click="tasks.cancelAll()"
       >
-        <Square :size="13" /> {{ t('layout.cancelTask') }}
+        <Square :size="13" /> {{ t('layout.cancelAll') }}
       </button>
       <button type="button" class="ghost-button flex h-9 items-center gap-2 px-3 text-[12px]" @click="openDownloads">
         <FolderOpen :size="14" /> {{ t('layout.downloadDir') }}

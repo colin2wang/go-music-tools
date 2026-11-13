@@ -319,3 +319,62 @@ func (s *Service) DownloadPlaylist(ctx context.Context, playlistID string, index
 	}
 	return s.downloadTracks(ctx, songs, dir, level, false, r)
 }
+
+// RetryFailedSongs 只重试专辑/歌单里失败的曲目：用原始资源 ID 与编号重新解析曲目列表，
+// 按失败子项名称筛选后复用原有目录与下载循环，避免整批重跑。
+func (s *Service) RetryFailedSongs(ctx context.Context, kind, resourceID string, indexes []int,
+	level string, failed []task.ItemResult, r *task.Reporter) error {
+
+	if len(failed) == 0 {
+		return nil
+	}
+	wanted := make(map[string]bool, len(failed))
+	for _, item := range failed {
+		wanted[item.Name] = true
+	}
+
+	var songs []model.SongDetail
+	var dir string
+	var withIndex bool
+	switch kind {
+	case "album":
+		album, err := s.GetAlbum(ctx, resourceID)
+		if err != nil {
+			return err
+		}
+		for _, item := range SelectSongs(album.Songs, indexes) {
+			if wanted[item.Item.Name] {
+				songs = append(songs, item.Item)
+			}
+		}
+		withIndex = true
+		dir, err = s.PrepareAlbumFolder(ctx, album)
+		if err != nil {
+			return err
+		}
+	case "playlist":
+		playlist, err := s.GetPlaylist(ctx, resourceID)
+		if err != nil {
+			return err
+		}
+		for _, item := range SelectSongs(playlist.Songs, indexes) {
+			if wanted[item.Item.Name] {
+				songs = append(songs, item.Item)
+			}
+		}
+		dir, err = s.PreparePlaylistFolder(ctx, playlist)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("不支持重试的下载类型: %s", kind)
+	}
+
+	if len(songs) == 0 {
+		return fmt.Errorf("未能在原始资源中定位失败曲目，请重新发起下载")
+	}
+	if r != nil {
+		r.SetTotal(len(songs))
+	}
+	return s.downloadTracks(ctx, songs, dir, level, withIndex, r)
+}

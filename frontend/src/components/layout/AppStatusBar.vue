@@ -12,8 +12,8 @@ const logs = useLogStore()
 const tasks = useTaskStore()
 
 const elapsed = computed(() => {
-  if (!tasks.done) return ''
-  const ms = tasks.done.elapsed_ms
+  const ms = tasks.lastFinished?.elapsed_ms ?? 0
+  if (!ms) return ''
   if (ms < 1000) return `${ms}ms`
   return `${(ms / 1000).toFixed(1)}s`
 })

@@ -6,7 +6,6 @@ import { bindings } from '@/api/bindings'
 import { useConfigStore } from '@/stores/config'
 import { useTaskStore } from '@/stores/task'
 import QualitySelect from '@/components/common/QualitySelect.vue'
-import TaskProgressCard from '@/components/common/TaskProgressCard.vue'
 import type { SearchSong } from '@/types'
 
 const { t } = useI18n()
@@ -63,9 +62,13 @@ async function downloadSelected() {
     flash(t('search.needSelect'))
     return
   }
-  await bindings.downloadSongs(selected.value, quality.value)
-  flash(t('search.started', { n: selected.value.length }))
-  await tasks.refresh()
+  try {
+    await bindings.downloadSongs(selected.value, quality.value)
+    flash(t('search.started', { n: selected.value.length }))
+    await tasks.refresh()
+  } catch (err) {
+    flash(err instanceof Error ? err.message : String(err))
+  }
 }
 </script>
 
@@ -192,7 +195,7 @@ async function downloadSelected() {
 
         <section class="glass-panel space-y-3 p-4">
           <QualitySelect v-model="quality" :label="t('search.qualityLabel')" />
-          <button type="button" class="brand-button flex h-10 w-full items-center justify-center gap-2 text-[12.5px]" :disabled="!selectedCount || tasks.running" @click="downloadSelected">
+          <button type="button" class="brand-button flex h-10 w-full items-center justify-center gap-2 text-[12.5px]" :disabled="!selectedCount" @click="downloadSelected">
             <Download :size="15" /> {{ t('search.downloadSelected', { n: selectedCount }) }}
           </button>
           <p class="text-[11px] leading-relaxed text-[var(--text-muted)]">
@@ -201,7 +204,5 @@ async function downloadSelected() {
         </section>
       </div>
     </div>
-
-    <div class="mt-4"><TaskProgressCard /></div>
   </div>
 </template>

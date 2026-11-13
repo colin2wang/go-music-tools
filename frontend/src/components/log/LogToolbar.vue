@@ -20,6 +20,8 @@ const levels: { value: 'ALL' | LogLevel; label: string }[] = [
   { value: 'ERROR', label: 'ERROR' },
 ]
 
+const runtimeLevels = ['debug', 'info', 'warn', 'error'] as const
+
 function flash(text: string) {
   notice.value = text
   window.setTimeout(() => { notice.value = '' }, 2600)
@@ -47,6 +49,16 @@ async function clear() {
       @change="logs.setLevel(($event.target as HTMLSelectElement).value as 'ALL' | LogLevel)"
     >
       <option v-for="l in levels" :key="l.value" :value="l.value">{{ l.value === 'ALL' ? t('common.all') : l.label }}</option>
+    </select>
+
+    <select
+      class="field-input h-7 w-[92px] px-2 py-0 text-[11px]"
+      :title="t('log.runtimeLevelHint')"
+      :aria-label="t('log.runtimeLevel')"
+      :value="logs.runtimeLevel"
+      @change="logs.setRuntimeLevel(($event.target as HTMLSelectElement).value as 'debug' | 'info' | 'warn' | 'error')"
+    >
+      <option v-for="l in runtimeLevels" :key="l" :value="l">{{ l.toUpperCase() }}</option>
     </select>
 
     <input

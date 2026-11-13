@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"go-music-tools/internal/logx"
@@ -17,6 +18,15 @@ func (s *Service) GetRecentLogs() []logx.LogEntry {
 func (s *Service) ClearLogs() {
 	s.deps.Logs.Clear()
 	s.deps.Logger.Info("日志窗口已清空")
+}
+
+// SetLogLevel 运行时调整全局日志级别（debug/info/warn/error），立即生效，不写入 config.yml。
+func (s *Service) SetLogLevel(level string) error {
+	if err := s.deps.Logs.SetLevel(level); err != nil {
+		return err
+	}
+	s.deps.Logger.Info("日志级别已调整", "level", strings.ToUpper(level))
+	return nil
 }
 
 func (s *Service) ExportLogs() (string, error) {

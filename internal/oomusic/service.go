@@ -273,6 +273,63 @@ func (s *Service) BatchDownload(ctx context.Context, keyword, quality string, r 
 	return ctx.Err()
 }
 
+// RetryFailed 只重试批量下载里失败的曲目：重新搜索关键词定位 song_mid，
+// 按「歌手 - 歌名」匹配失败子项后逐首复用 Download。
+func (s *Service) RetryFailed(ctx context.Context, keyword, quality string,
+	failed []task.ItemResult, r *task.Reporter) error {
+
+	if len(failed) == 0 {
+		return nil
+	}
+	songs, err := s.Search(ctx, keyword)
+	if err != nil {
+		return err
+	}
+	byName := make(map[string]model.OOSong, len(songs))
+	for _, song := range songs {
+		byName[song.SingerName+" - "+song.SongTitle] = song
+	}
+	selected := make([]model.OOSong, 0, len(failed))
+	for _, item := range failed {
+		if song, ok := byName[item.Name]; ok {
+			selected = append(selected, song)
+		}
+	}
+	if len(selected) == 0 {
+		return fmt.Errorf("未能在当前搜索结果中定位失败曲目，请重新搜索后下载")
+	}
+	if r != nil {
+		r.SetTotal(len(selected))
+	}
+	for _, song := range selected {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		name := song.SingerName + " - " + song.SongTitle
+		if r != nil {
+			r.Stage("重试下载：" + name)
+		}
+		path, skipped, err := s.Download(ctx, song.SingerName, song.SongMid, quality)
+		if err != nil {
+			if s.Logger != nil {
+				s.Logger.Error("重试 OO Music 单曲失败", "song", name, "error", err)
+			}
+			if r != nil {
+				r.Item(name, "failed", err.Error())
+			}
+			continue
+		}
+		status := "success"
+		if skipped {
+			status = "skipped"
+		}
+		if r != nil {
+			r.Item(name, status, path)
+		}
+	}
+	return ctx.Err()
+}
+
 // SearchCacheEntry 是搜索缓存的单条检视信息。
 type SearchCacheEntry struct {
 	Keyword string `json:"keyword"`

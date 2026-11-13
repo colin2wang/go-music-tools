@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 
 	"go-music-tools/internal/config"
@@ -74,6 +75,24 @@ func resolveDir(root, dir string) string {
 
 func (h *Hub) Logger() *slog.Logger { return h.logger }
 func (h *Hub) LogDir() string       { return h.logDir }
+
+// ValidateLevel 校验级别名（debug/info/warn/error，大小写不敏感）。
+func ValidateLevel(name string) error {
+	switch strings.ToLower(name) {
+	case "debug", "info", "warn", "error":
+		return nil
+	}
+	return fmt.Errorf("无效日志级别: %s", name)
+}
+
+// SetLevel 运行时调整全局日志级别，立即生效；不写入 config.yml。
+func (h *Hub) SetLevel(name string) error {
+	if err := ValidateLevel(name); err != nil {
+		return err
+	}
+	h.level.Set(config.LoggingConfig{Level: strings.ToLower(name)}.SlogLevel())
+	return nil
+}
 
 func (h *Hub) Recent() []LogEntry { return h.ring.Snapshot() }
 func (h *Hub) Clear()             { h.ring.Clear() }

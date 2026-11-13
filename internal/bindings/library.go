@@ -37,7 +37,9 @@ func (s *Service) RunLibraryFix(req LibraryFixRequest) (string, error) {
 	}
 	svc := library.New(s.cfg(), s.deps.Root, s.httpClient(), s.deps.Logger, s.deps.Cache)
 
-	return s.Start("library:"+string(kind), 0, func(ctx context.Context, r *task.Reporter) error {
+	// 库修补的子项是本地目录，无法从失败子项重建网络下载请求，
+	// 因此不注入重试工厂：任务面板会把这类任务的「重试失败项」按钮置灰。
+	return s.start("library:"+string(kind), 0, func(ctx context.Context, r *task.Reporter) error {
 		s.deps.Logger.Info("批量修补任务开始", "kind", kind, "directory", directory)
 		results, err := svc.Run(ctx, fixReq, r)
 		success := 0

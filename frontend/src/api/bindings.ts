@@ -13,7 +13,9 @@ import type {
   OOSong,
   QualityOption,
   SearchSong,
+  TaskBoard,
   TaskDone,
+  TaskQueueSnapshot,
   TaskProgress,
   TaskRecord,
 } from '@/types'
@@ -65,14 +67,22 @@ export const bindings = {
   // 全局日志
   getRecentLogs: () => call<LogEntry[]>('GetRecentLogs'),
   clearLogs: () => call<void>('ClearLogs'),
+  setLogLevel: (level: string) => call<void>('SetLogLevel', level),
   exportLogs: () => call<string>('ExportLogs'),
   openLogDir: () => call<void>('OpenLogDir'),
 
   // 系统
   getAppInfo: () => call<AppInfo>('GetAppInfo'),
   getTaskStatus: () => call<TaskProgress>('GetTaskStatus'),
+  getTaskBoard: () => call<TaskBoard>('GetTaskBoard'),
+  getTaskQueue: () => call<TaskQueueSnapshot>('GetTaskQueue'),
+  removeQueuedTask: (taskID: string) => call<boolean>('RemoveQueuedTask', taskID),
+  clearTaskQueue: () => call<number>('ClearTaskQueue'),
   getTaskHistory: (limit: number) => call<TaskRecord[]>('GetTaskHistory', limit),
+  // CancelTask 现在取消两条通道里全部运行中的任务。
   cancelTask: () => call<boolean>('CancelTask'),
+  cancelTaskById: (taskID: string) => call<boolean>('CancelTaskByID', taskID),
+  retryFailedItems: (taskID: string) => call<string>('RetryFailedItems', taskID),
   openDownloadDir: () => call<void>('OpenDownloadDir'),
   openPath: (path: string) => call<void>('OpenPath', path),
   selectDirectory: (title: string) => call<string>('SelectDirectory', title),
