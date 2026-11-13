@@ -28,7 +28,8 @@ func main() {
 
 func run() error {
 	root := appRoot()
-	store := config.NewStore(filepath.Join(root, "config.yaml"))
+	migrateLegacyYAML(root)
+	store := config.NewStore(filepath.Join(root, "config.yml"))
 	if err := store.Load(); err != nil {
 		return fmt.Errorf("加载配置: %w", err)
 	}
@@ -43,7 +44,7 @@ func run() error {
 		Root:   root,
 		Config: store,
 		Logs:   hub,
-		Cache:  storepkg.New(filepath.Join(root, "state.yaml")),
+		Cache:  storepkg.New(filepath.Join(root, "state.yml")),
 		Logger: hub.Logger(),
 	})
 	if err != nil {
@@ -77,4 +78,23 @@ func appRoot() string {
 		return wd
 	}
 	return "."
+}
+
+// migrateLegacyYAML 把旧的 config.yaml / state.yaml 重命名为 .yml，
+// 保留已有配置与偏好；目标已存在时保留新文件，旧文件原样留在原地。
+func migrateLegacyYAML(root string) {
+	for _, pair := range [][2]string{
+		{"config.yaml", "config.yml"},
+		{"state.yaml", "state.yml"},
+	} {
+		oldPath := filepath.Join(root, pair[0])
+		newPath := filepath.Join(root, pair[1])
+		if _, err := os.Stat(oldPath); err != nil {
+			continue
+		}
+		if _, err := os.Stat(newPath); err == nil {
+			continue
+		}
+		_ = os.Rename(oldPath, newPath)
+	}
 }

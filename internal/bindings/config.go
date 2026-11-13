@@ -62,7 +62,7 @@ func (s *Service) OpenConfigFile() error {
 
 // ExportConfig 把当前生效配置导出为 YAML 备份，返回目标路径（用户取消时返回空串）。
 func (s *Service) ExportConfig() (string, error) {
-	path, err := s.requestSavePath("导出配置为 YAML", "config-backup.yaml")
+	path, err := s.requestSavePath("导出配置为 YAML", "config-backup.yml")
 	if err != nil {
 		return "", err
 	}

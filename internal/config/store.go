@@ -18,7 +18,7 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("配置校验失败，共 %d 项", len(e.Errors))
 }
 
-// Store 以「默认值合并 → 校验 → 临时文件 → 原子 rename → 广播」的流程管理 config.yaml。
+// Store 以「默认值合并 → 校验 → 临时文件 → 原子 rename → 广播」的流程管理 config.yml。
 type Store struct {
 	mu       sync.RWMutex
 	path     string

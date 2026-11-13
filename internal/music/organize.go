@@ -19,6 +19,7 @@ import (
 type Store interface {
 	httpclient.MetadataIntervalStore
 	api.MusicInfoCache
+	api.SongCache
 }
 
 type Service struct {
@@ -33,7 +34,7 @@ type Service struct {
 }
 
 func New(cfg config.Config, root string, hc *httpclient.Client, logger *slog.Logger, store Store) *Service {
-	netease := api.NewNetEase(cfg, hc, logger)
+	netease := api.NewNetEase(cfg, hc, logger, store)
 	next := api.NewNextMusic(cfg, hc, logger, store)
 	return &Service{
 		Cfg:     cfg,
@@ -86,6 +87,28 @@ func (s *Service) Search(ctx context.Context, keyword string) ([]model.SearchSon
 	return s.NetEase.Search(ctx, keyword)
 }
 
+// resolveAndDownload 获取元数据并下载；若下载因播放地址失效（403/404/410）失败，
+// 则使缓存失效、重新获取地址并重试一次，仍失败才返回错误。
+func (s *Service) resolveAndDownload(ctx context.Context, songID, level, dir string, index int, name string) (*DownloadResult, error) {
+	meta, err := s.Metadata.Get(ctx, songID, level)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.DownloadSongAndResources(ctx, *meta, dir, index)
+	if err == nil || !httpclient.IsURLExpired(err) {
+		return result, err
+	}
+	if s.Logger != nil {
+		s.Logger.Info("播放地址已过期，重新获取后重试", "song_id", songID, "name", name)
+	}
+	s.Metadata.Invalidate(songID, level)
+	meta, err = s.Metadata.Get(ctx, songID, level)
+	if err != nil {
+		return nil, err
+	}
+	return s.DownloadSongAndResources(ctx, *meta, dir, index)
+}
+
 // DownloadSong 下载单曲到默认下载目录，不带曲目序号。
 func (s *Service) DownloadSong(ctx context.Context, songID, level string, r *task.Reporter) error {
 	id := api.ExtractResourceID(songID)
@@ -100,7 +123,7 @@ func (s *Service) DownloadSong(ctx context.Context, songID, level string, r *tas
 	if r != nil {
 		r.Stage("下载歌曲")
 	}
-	result, err := s.DownloadSongAndResources(ctx, *meta, s.DownloadDir(), 0)
+	result, err := s.resolveAndDownload(ctx, id, level, s.DownloadDir(), 0, meta.Name)
 	if err != nil {
 		report(r, meta.Name, "failed", err.Error())
 		return err
@@ -214,19 +237,11 @@ func (s *Service) downloadTracks(ctx context.Context, songs []model.SongDetail, 
 		if r != nil {
 			r.Stage(fmt.Sprintf("下载 %d/%d：%s", song.Index, len(songs), song.Name))
 		}
-		meta, err := s.Metadata.Get(ctx, song.ID, level)
-		if err != nil {
-			if s.Logger != nil {
-				s.Logger.Error("获取曲目元数据失败", "song_id", song.ID, "name", song.Name, "error", err)
-			}
-			report(r, song.Name, "failed", err.Error())
-			continue
-		}
 		index := 0
 		if withIndex {
 			index = song.Index
 		}
-		result, err := s.DownloadSongAndResources(ctx, *meta, dir, index)
+		result, err := s.resolveAndDownload(ctx, song.ID, level, dir, index, song.Name)
 		if err != nil {
 			if s.Logger != nil {
 				s.Logger.Error("下载曲目失败", "song_id", song.ID, "name", song.Name, "error", err)

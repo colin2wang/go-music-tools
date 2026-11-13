@@ -31,14 +31,22 @@ type Service struct {
 	HTTP   *httpclient.Client
 	API    *api.OOMusicClient
 	Logger *slog.Logger
+	Cache  DetailCache
 
 	mu          sync.Mutex
 	searchCache map[string][]model.OOSong
 }
 
-func New(cfg config.Config, root string, hc *httpclient.Client, logger *slog.Logger) *Service {
+// DetailCache 由 internal/store.Store 实现，避免本包直接依赖具体存储。
+type DetailCache interface {
+	GetOODetail(keyword, songMid string) (map[string]any, bool)
+	UpsertOODetail(keyword, songMid string, detail map[string]any, raw string) error
+	DeleteOODetail(keyword, songMid string)
+}
+
+func New(cfg config.Config, root string, hc *httpclient.Client, logger *slog.Logger, cache DetailCache) *Service {
 	return &Service{
-		Cfg: cfg, Root: root, HTTP: hc,
+		Cfg: cfg, Root: root, HTTP: hc, Cache: cache,
 		API: api.NewOOMusic(cfg, hc, logger), Logger: logger,
 		searchCache: make(map[string][]model.OOSong),
 	}
@@ -90,7 +98,27 @@ func (s *Service) Search(ctx context.Context, keyword string) ([]model.OOSong, e
 }
 
 func (s *Service) FetchDetail(ctx context.Context, keyword, songMid string) (map[string]any, error) {
-	return s.API.GetSongDetail(ctx, keyword, songMid)
+	if s.Cache != nil {
+		if cached, ok := s.Cache.GetOODetail(keyword, songMid); ok {
+			return cached, nil
+		}
+	}
+	detail, raw, err := s.API.GetSongDetail(ctx, keyword, songMid)
+	if err != nil {
+		return nil, err
+	}
+	// 空详情不入缓存；成功详情随播放地址 TTL 一起过期，过期后整体重新拉取。
+	if s.Cache != nil && len(detail) > 0 {
+		_ = s.Cache.UpsertOODetail(keyword, songMid, detail, raw)
+	}
+	return detail, nil
+}
+
+// InvalidateDetail 使指定歌曲的 OO Music 详情缓存失效（播放地址过期重取时调用）。
+func (s *Service) InvalidateDetail(keyword, songMid string) {
+	if s.Cache != nil {
+		s.Cache.DeleteOODetail(keyword, songMid)
+	}
 }
 
 func (s *Service) Detail(ctx context.Context, keyword, songMid string) (*model.OODetail, error) {
@@ -111,6 +139,7 @@ func (s *Service) Qualities(ctx context.Context, keyword, songMid string) ([]mod
 }
 
 // Download 下载单曲并写入封面、LRC 与标签；已存在文件直接跳过。
+// 播放地址失效（403/404/410）时使详情缓存失效、重新拉取地址并重试一次。
 func (s *Service) Download(ctx context.Context, keyword, songMid, quality string) (string, bool, error) {
 	detail, err := s.FetchDetail(ctx, keyword, songMid)
 	if err != nil {
@@ -118,10 +147,6 @@ func (s *Service) Download(ctx context.Context, keyword, songMid, quality string
 	}
 	if quality == "" {
 		quality = s.Cfg.Advanced.OOMusicDefaultQuality
-	}
-	playURL, actualQuality, ext, kbps, err := api.OOGetPlayURL(detail, quality)
-	if err != nil {
-		return "", false, err
 	}
 	info := api.OOParseSongInfo(detail)
 
@@ -133,22 +158,42 @@ func (s *Service) Download(ctx context.Context, keyword, songMid, quality string
 	if base == " - " {
 		base = "OO Music - " + SafePath(songMid)
 	}
-	dest := filepath.Join(dir, base+ext)
 
-	if s.Cfg.Download.SkipExisting {
-		if stat, err := os.Stat(dest); err == nil && stat.Size() > 0 {
-			if s.Logger != nil {
-				s.Logger.Info("OO Music 文件已存在，跳过", "file", base+ext)
-			}
-			return dest, true, nil
+	var dest, ext, actualQuality, kbps string
+	for attempt := 0; ; attempt++ {
+		playURL, aq, e, kb, err := api.OOGetPlayURL(detail, quality)
+		if err != nil {
+			return "", false, err
 		}
-	}
-
-	if err := httpclient.RandomDelay(ctx, s.Cfg.Network.APIDelayMin, s.Cfg.Network.RandomDelayMax); err != nil {
-		return "", false, err
-	}
-	if _, err := s.HTTP.Download(ctx, playURL, dest, nil, nil); err != nil {
-		return "", false, fmt.Errorf("下载 OO Music 音频失败: %w", err)
+		actualQuality, ext, kbps = aq, e, kb
+		dest = filepath.Join(dir, base+ext)
+		if attempt == 0 && s.Cfg.Download.SkipExisting {
+			if stat, err := os.Stat(dest); err == nil && stat.Size() > 0 {
+				if s.Logger != nil {
+					s.Logger.Info("OO Music 文件已存在，跳过", "file", base+ext)
+				}
+				return dest, true, nil
+			}
+		}
+		if err := httpclient.RandomDelay(ctx, s.Cfg.Network.APIDelayMin, s.Cfg.Network.RandomDelayMax); err != nil {
+			return "", false, err
+		}
+		_, dlErr := s.HTTP.Download(ctx, playURL, dest, nil, httpclient.ThrottledProgress(s.Logger, base+ext))
+		if dlErr == nil {
+			break
+		}
+		// 地址过期：失效详情缓存、重新拉取地址后重试一次；其余错误直接返回。
+		if attempt > 0 || !httpclient.IsURLExpired(dlErr) {
+			return "", false, fmt.Errorf("下载 OO Music 音频失败: %w", dlErr)
+		}
+		if s.Logger != nil {
+			s.Logger.Info("OO Music 播放地址已过期，重新获取后重试", "song", base)
+		}
+		s.InvalidateDetail(keyword, songMid)
+		detail, err = s.FetchDetail(ctx, keyword, songMid)
+		if err != nil {
+			return "", false, err
+		}
 	}
 	if s.Logger != nil {
 		s.Logger.Info("OO Music 音频下载完成", "file", base+ext, "quality", actualQuality, "kbps", kbps)
@@ -244,6 +289,13 @@ func (s *Service) ListSearchCache() []SearchCacheEntry {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Keyword < out[j].Keyword })
 	return out
+}
+
+// GetSearchCacheSongs 返回指定关键词缓存的搜索结果列表。
+func (s *Service) GetSearchCacheSongs(keyword string) []model.OOSong {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.searchCache[keyword]
 }
 
 // ClearSearchCache 清空全部搜索缓存，或仅删除指定关键词；返回删除的条目数。

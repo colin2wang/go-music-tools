@@ -1,6 +1,7 @@
 import type {
   AppInfo,
   CacheEntry,
+  CacheDetail,
   CacheRegionStat,
   ConfigGroup,
   ConfigValues,
@@ -96,6 +97,7 @@ export const bindings = {
   // 缓存检视
   getCacheStats: () => call<CacheRegionStat[]>('GetCacheStats'),
   listCache: (region: string) => call<CacheEntry[]>('ListCache', region),
+  getCacheDetail: (region: string, key: string) => call<CacheDetail>('GetCacheDetail', region, key),
   clearCache: (region: string, key: string) => call<number>('ClearCache', region, key),
 
   // 音乐库工具

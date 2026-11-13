@@ -63,3 +63,14 @@ func (m *MetadataService) Get(ctx context.Context, songID, level string) (*model
 	}
 	return nil, fmt.Errorf("获取歌曲 %s 元数据失败: %w", songID, lastErr)
 }
+
+// Invalidate 使两个通道的整曲缓存同时失效（播放地址过期重取时调用；
+// 实际走哪个通道由配置决定，双双失效最简单也最安全）。
+func (m *MetadataService) Invalidate(songID, level string) {
+	if m.NetEase != nil {
+		m.NetEase.InvalidateSong(songID, level)
+	}
+	if m.Next != nil {
+		m.Next.InvalidateSong(songID, level)
+	}
+}

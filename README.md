@@ -77,7 +77,7 @@ go build -ldflags="-H windowsgui" -o go-music-tools.exe .
 
 ## Configuration
 
-On first launch `config.yaml` is generated from built-in defaults. Field groups: `api`,
+On first launch `config.yml` is generated from built-in defaults. Field groups: `api`,
 `download`, `filename`, `metadata`, `network`, `logging`, `advanced` — every field is actually
 effective (the original Python version had dead options; they have been redesigned). The Settings
 page renders the form dynamically from the backend `GetConfigSchema`, so adding a field requires
@@ -85,7 +85,7 @@ no frontend change.
 
 Config lookup order: directory specified by the `MUSIC_TOOLS_ROOT` environment variable, otherwise
 the current working directory. Data caches live in process memory (go-cache); the last download
-preferences and the metadata rate-limit timestamp are persisted to `state.yaml` in the same
+preferences and the metadata rate-limit timestamp are persisted to `state.yml` in the same
 directory; logs go to `logs/`.
 
 ## Project Layout

@@ -69,13 +69,13 @@ go build -ldflags="-H windowsgui" -o go-music-tools.exe .
 
 ## 配置
 
-首次启动会按内置默认值生成 `config.yaml`。字段分组：`api`、`download`、`filename`、
+首次启动会按内置默认值生成 `config.yml`。字段分组：`api`、`download`、`filename`、
 `metadata`、`network`、`logging`、`advanced`，全部字段都会真实生效（原 Python 版存在
 若干死配置，新版已重新设计）。界面「设置」页由后端 `GetConfigSchema` 动态渲染，
 新增字段无需改前端。
 
 配置文件查找顺序：环境变量 `MUSIC_TOOLS_ROOT` 指定目录，否则当前工作目录。
-数据缓存保存在进程内存（go-cache），上次下载偏好与元数据限流时间戳持久化到同目录 `state.yaml`，日志在 `logs/`。
+数据缓存保存在进程内存（go-cache），上次下载偏好与元数据限流时间戳持久化到同目录 `state.yml`，日志在 `logs/`。
 
 ## 目录结构
 

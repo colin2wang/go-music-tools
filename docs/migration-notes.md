@@ -77,9 +77,9 @@ form：`url`(歌曲 ID)、`level`、`type=json`。
 1. `music_url` 缓存与原版同为进程内存储，Go 版统一收敛到 `internal/store`（go-cache）。
 2. OO Music 选低音质时扩展名/日志音质与播放地址不匹配，Go 版按实际选中的音质推断扩展名。
 3. 日志原来每启动一个文件且无轮转，Go 版用 `lumberjack` 按大小/天数轮转。
-4. `config.yml` 中的死配置在新 `config.yaml` 中重新设计，全部字段都真实生效。
+4. `config.yml` 中的死配置在新 `config.yml` 中重新设计，全部字段都真实生效。
 5. 音频下载改为流式写 `.part` 后原子 rename，不留半文件。
 
 ## 6. 配置差异
 
-新版使用 `config.yaml`（非 `config.yml`）；不使用数据库，偏好/缓存/任务历史存于进程内（`internal/store`，go-cache），其中上次下载偏好与限流时间戳持久化到 `state.yaml`。
+新版配置文件为 `config.yml`（历史版本曾用 `config.yaml`/`config.yml` 命名，现统一 `.yml` 扩展名）；不使用数据库，偏好/缓存/任务历史存于进程内（`internal/store`，go-cache），其中上次下载偏好与限流时间戳持久化到 `state.yml`。

@@ -15,9 +15,9 @@ downloads/
 .DS_Store
 
 # 本机用户配置（首次启动自动生成）
-config.yaml
+config.yml
 # 运行状态（上次下载偏好、限流时间戳）
-state.yaml
+state.yml
 
 # IDEs
 .idea/

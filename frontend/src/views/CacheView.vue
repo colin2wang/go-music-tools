@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Database, Loader2, RefreshCw, Trash2, Eraser } from 'lucide-vue-next'
+import { Database, Loader2, RefreshCw, Trash2, Eraser, Braces } from 'lucide-vue-next'
 import { bindings } from '@/api/bindings'
-import type { CacheEntry, CacheRegionStat } from '@/types'
+import JsonDetailDialog from '@/components/JsonDetailDialog.vue'
+import type { CacheDetail, CacheEntry, CacheRegionStat } from '@/types'
 
 const { t } = useI18n()
 const stats = ref<CacheRegionStat[]>([])
@@ -11,6 +12,8 @@ const activeRegion = ref('')
 const entries = ref<CacheEntry[]>([])
 const loading = ref(false)
 const notice = ref<{ ok: boolean; text: string } | null>(null)
+const detailDialog = ref<{ title: string; content: string } | null>(null)
+const detailLoading = ref(false)
 
 const activeLabel = computed(() => regionLabel(activeRegion.value))
 
@@ -18,6 +21,8 @@ const REGION_KEYS: Record<string, string> = {
   prefs: 'cache.regionPrefs',
   music_info: 'cache.regionInfo',
   music_url: 'cache.regionUrl',
+  netease_song: 'cache.regionNetEase',
+  oo_detail: 'cache.regionOODetail',
   oo_search: 'cache.regionOO',
 }
 
@@ -56,6 +61,23 @@ async function clearRegion() {
   flash(true, t('cache.cleared', { region: activeLabel.value }))
   entries.value = []
   await refreshStats()
+}
+
+async function showDetail(item: CacheEntry) {
+  detailLoading.value = true
+  detailDialog.value = { title: item.key, content: '' }
+  try {
+    const detail: CacheDetail = await bindings.getCacheDetail(activeRegion.value, item.key)
+    // OO 详情缓存优先展示原始响应；其余缓存区展示格式化 JSON。
+    const content = activeRegion.value === 'oo_detail'
+      ? (detail.raw || detail.formatted)
+      : detail.formatted
+    detailDialog.value = { title: `${t('cache.jsonTitle')} · ${item.key}`, content }
+  } catch (e) {
+    detailDialog.value = { title: item.key, content: String(e) }
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 function formatBytes(n: number): string {
@@ -123,7 +145,7 @@ onMounted(refreshStats)
             <th class="px-4 py-2.5 font-medium">{{ t('cache.colKey') }}</th>
             <th class="py-2.5 font-medium">{{ t('cache.colPreview') }}</th>
             <th class="w-24 py-2.5 font-medium">{{ t('cache.colSize') }}</th>
-            <th class="w-16 py-2.5 font-medium">{{ t('cache.colAction') }}</th>
+            <th class="w-36 py-2.5 font-medium">{{ t('cache.colAction') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -132,13 +154,28 @@ onMounted(refreshStats)
             <td class="max-w-[420px] truncate py-2.5 text-[var(--text-secondary)]" :title="item.preview">{{ item.preview || '—' }}</td>
             <td class="py-2.5 font-mono text-[var(--text-muted)]">{{ formatBytes(item.bytes) }}</td>
             <td class="py-2.5">
-              <button type="button" class="text-[var(--err)] hover:opacity-80" title="删除此条目" @click="removeEntry(item.key)">
-                <Trash2 :size="13" />
-              </button>
+              <div class="flex items-center gap-2.5">
+                <button type="button" class="flex items-center gap-1 text-[var(--brand-300)] hover:opacity-80" @click="showDetail(item)">
+                  <Braces :size="13" /> JSON
+                </button>
+                <button type="button" class="text-[var(--err)] hover:opacity-80" :title="t('cache.deleted', { key: '' })" @click="removeEntry(item.key)">
+                  <Trash2 :size="13" />
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
       </table>
     </section>
+
+    <Teleport to="body">
+      <JsonDetailDialog
+        v-if="detailDialog"
+        :title="detailDialog.title"
+        :content="detailDialog.content"
+        :loading="detailLoading"
+        @close="detailDialog = null"
+      />
+    </Teleport>
   </div>
 </template>

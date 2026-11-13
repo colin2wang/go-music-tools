@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -142,6 +143,22 @@ func (c *Client) PostJSON(ctx context.Context, rawURL string, payload any, heade
 	return c.Request(ctx, http.MethodPost, rawURL, strings.NewReader(string(data)), headers)
 }
 
+// URLError 表示音频地址请求层面的失败（HTTP 状态非 200），带状态码供上层判断地址是否已失效。
+type URLError struct {
+	StatusCode int
+	URL        string
+}
+
+func (e *URLError) Error() string {
+	return fmt.Sprintf("下载失败，HTTP %d: %s", e.StatusCode, e.URL)
+}
+
+// IsURLExpired 判断错误是否由播放地址失效（403/404/410 等）引起，此时应重新获取地址再重试。
+func IsURLExpired(err error) bool {
+	var ue *URLError
+	return errors.As(err, &ue) && (ue.StatusCode == http.StatusForbidden || ue.StatusCode == http.StatusNotFound || ue.StatusCode == http.StatusGone)
+}
+
 // Download 流式写入 .part 后原子 rename，取消时清理临时文件。
 func (c *Client) Download(ctx context.Context, rawURL, dest string, headers map[string]string, progress func(written, total int64)) (string, error) {
 	resp, err := c.Do(ctx, http.MethodGet, rawURL, nil, headers)
@@ -150,7 +167,7 @@ func (c *Client) Download(ctx context.Context, rawURL, dest string, headers map[
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("下载失败，HTTP %d: %s", resp.StatusCode, rawURL)
+		return "", &URLError{StatusCode: resp.StatusCode, URL: rawURL}
 	}
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return "", err

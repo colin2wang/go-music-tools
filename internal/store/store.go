@@ -25,7 +25,7 @@ const (
 
 // Store 用 go-cache 承载原 SQLite 的全部职责：上次下载偏好、
 // 元数据限流时间戳、歌曲信息与播放地址缓存、任务历史。
-// 其中偏好与限流时间戳持久化到 YAML 状态文件（如 state.yaml），
+// 其中偏好与限流时间戳持久化到 YAML 状态文件（如 state.yml），
 // 缓存与任务历史仅本次运行有效。
 type Store struct {
 	path string
@@ -33,6 +33,8 @@ type Store struct {
 	prefs *gocache.Cache
 	info  *gocache.Cache
 	url   *gocache.Cache
+	ne    *gocache.Cache
+	oo    *gocache.Cache
 
 	mu     sync.Mutex
 	tasks  []model.TaskRecord
@@ -52,6 +54,8 @@ func New(path string) *Store {
 		prefs: gocache.New(gocache.NoExpiration, 10*time.Minute),
 		info:  gocache.New(gocache.NoExpiration, 10*time.Minute),
 		url:   gocache.New(gocache.NoExpiration, 10*time.Minute),
+		ne:    gocache.New(gocache.NoExpiration, 10*time.Minute),
+		oo:    gocache.New(gocache.NoExpiration, 10*time.Minute),
 	}
 	if path == "" {
 		return s
@@ -179,6 +183,10 @@ func (s *Store) UpsertMusicInfo(info model.MusicInfo) error {
 	return nil
 }
 
+// urlCacheTTL 是播放地址缓存的存活时间。播放地址通常带时效签名，
+// 过期后再用会导致下载 403/404，因此按常见有效期量级设短 TTL。
+const urlCacheTTL = 20 * time.Minute
+
 func (s *Store) GetMusicURL(musicID, quality string) (string, bool, error) {
 	v, ok := s.url.Get(urlKey(musicID, quality))
 	if !ok {
@@ -189,8 +197,98 @@ func (s *Store) GetMusicURL(musicID, quality string) (string, bool, error) {
 }
 
 func (s *Store) UpsertMusicURL(musicID, quality, url string) error {
-	s.url.Set(urlKey(musicID, quality), url, gocache.DefaultExpiration)
+	s.url.Set(urlKey(musicID, quality), url, urlCacheTTL)
 	return nil
+}
+
+// DeleteMusicURL 使指定歌曲与音质的播放地址缓存失效（地址过期重取时调用）。
+func (s *Store) DeleteMusicURL(musicID, quality string) {
+	s.url.Delete(urlKey(musicID, quality))
+}
+
+// --- 网易云主通道歌曲缓存 -------------------------------------------------
+
+func neKey(songID, level string) string {
+	data, _ := json.Marshal([2]string{songID, level})
+	return string(data)
+}
+
+// GetNetEaseSong 读取网易云主通道的整曲元数据缓存（含播放地址，随 TTL 一起过期）。
+func (s *Store) GetNetEaseSong(songID, level string) (*model.SongMeta, bool) {
+	v, ok := s.ne.Get(neKey(songID, level))
+	if !ok {
+		return nil, false
+	}
+	meta := v.(model.SongMeta)
+	if meta.Name == "" || meta.URL == "" {
+		return nil, false
+	}
+	return &meta, true
+}
+
+// UpsertNetEaseSong 写入网易云主通道缓存；只有标题与地址都非空的成功结果才入缓存。
+func (s *Store) UpsertNetEaseSong(meta model.SongMeta, level string) error {
+	if meta.Name == "" || meta.URL == "" {
+		return nil
+	}
+	s.ne.Set(neKey(meta.ID, level), meta, urlCacheTTL)
+	return nil
+}
+
+// DeleteNetEaseSong 使指定歌曲与音质的网易云缓存失效（地址过期重取时调用）。
+func (s *Store) DeleteNetEaseSong(songID, level string) {
+	s.ne.Delete(neKey(songID, level))
+}
+
+// --- OO Music 详情缓存 ----------------------------------------------------
+
+func ooDetailKey(keyword, songMid string) string {
+	data, _ := json.Marshal([2]string{keyword, songMid})
+	return string(data)
+}
+
+// OODetailValue 是 OO Music 详情缓存的存储结构，同时保留原始响应 JSON。
+type OODetailValue struct {
+	Detail map[string]any
+	Raw    string
+}
+
+// GetOODetail 读取 OO Music 详情缓存（含播放地址，随 TTL 一起过期）。
+func (s *Store) GetOODetail(keyword, songMid string) (map[string]any, bool) {
+	detail, _, ok := s.getOODetailValue(keyword, songMid)
+	return detail, ok
+}
+
+// GetOODetailRaw 读取 OO Music 详情缓存及其原始响应 JSON。
+func (s *Store) GetOODetailRaw(keyword, songMid string) (map[string]any, string, bool) {
+	return s.getOODetailValue(keyword, songMid)
+}
+
+func (s *Store) getOODetailValue(keyword, songMid string) (map[string]any, string, bool) {
+	v, ok := s.oo.Get(ooDetailKey(keyword, songMid))
+	if !ok {
+		return nil, "", false
+	}
+	val, ok := v.(OODetailValue)
+	if !ok || len(val.Detail) == 0 {
+		return nil, "", false
+	}
+	return val.Detail, val.Raw, true
+}
+
+// UpsertOODetail 写入 OO Music 详情缓存，并保留原始响应 JSON；空详情不入缓存。
+// TTL 与播放地址一致：详情内含时效性地址，过期后整体重新拉取。
+func (s *Store) UpsertOODetail(keyword, songMid string, detail map[string]any, raw string) error {
+	if len(detail) == 0 {
+		return nil
+	}
+	s.oo.Set(ooDetailKey(keyword, songMid), OODetailValue{Detail: detail, Raw: raw}, urlCacheTTL)
+	return nil
+}
+
+// DeleteOODetail 使指定 OO Music 歌曲的详情缓存失效（地址过期重取时调用）。
+func (s *Store) DeleteOODetail(keyword, songMid string) {
+	s.oo.Delete(ooDetailKey(keyword, songMid))
 }
 
 func urlKey(musicID, quality string) string {
@@ -239,6 +337,8 @@ const (
 	RegionPrefs     = "prefs"
 	RegionMusicInfo = "music_info"
 	RegionMusicURL  = "music_url"
+	RegionNetEase   = "netease_song"
+	RegionOODetail  = "oo_detail"
 )
 
 // Entry 是缓存检视页面展示的单条缓存内容。
@@ -256,6 +356,10 @@ func regionCache(s *Store, region string) *gocache.Cache {
 		return s.info
 	case RegionMusicURL:
 		return s.url
+	case RegionNetEase:
+		return s.ne
+	case RegionOODetail:
+		return s.oo
 	}
 	return nil
 }
@@ -288,6 +392,15 @@ func (s *Store) Count(region string) int {
 	return c.ItemCount()
 }
 
+// Get 读取指定缓存区的一个条目原始值；region 或 key 不存在时返回 false。
+func (s *Store) Get(region, key string) (any, bool) {
+	c := regionCache(s, region)
+	if c == nil {
+		return nil, false
+	}
+	return c.Get(key)
+}
+
 // Delete 删除指定缓存区的一个条目；key 为空时清空整个区域。
 func (s *Store) Delete(region, key string) {
 	c := regionCache(s, region)
@@ -308,6 +421,8 @@ func previewValue(v any) string {
 		return strings.ReplaceAll(val, "\n", " ")
 	case model.MusicInfo:
 		return val.Artists + " - " + val.Title
+	case model.SongMeta:
+		return val.Artists + " - " + val.Name + " (" + val.UsedQuality + ")"
 	default:
 		return fmt.Sprintf("%v", v)
 	}

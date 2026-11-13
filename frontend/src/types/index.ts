@@ -143,6 +143,11 @@ export interface CacheEntry {
   bytes: number
 }
 
+export interface CacheDetail {
+  formatted: string
+  raw: string
+}
+
 export type LibraryFixKind = 'lyrics' | 'cover' | 'artists' | 'metadata'
 
 export interface LibraryFixRequest {

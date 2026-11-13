@@ -28,7 +28,7 @@ function focusLogs() {
   <footer class="fixed bottom-0 left-0 right-0 z-30 flex h-[30px] items-center gap-4 border-t border-[var(--border-soft)] bg-[rgba(7,11,22,0.94)] px-4 text-[11px] text-[var(--text-muted)] backdrop-blur-xl">
     <button type="button" class="flex min-w-0 items-center gap-1.5 hover:text-[var(--text-primary)]" :title="t('layout.openConfigFile')" @click="config.openFile()">
       <FileText :size="12" />
-      <span class="truncate">{{ config.appInfo?.config_path ?? 'config.yaml' }}</span>
+      <span class="truncate">{{ config.appInfo?.config_path ?? 'config.yml' }}</span>
     </button>
     <button type="button" class="hidden items-center gap-1.5 hover:text-[var(--text-primary)] md:flex" :title="t('layout.openLogDir')" @click="logs.openDir()">
       <Database :size="12" />

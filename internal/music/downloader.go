@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"go-music-tools/internal/config"
@@ -27,6 +28,9 @@ type Downloader struct {
 	Cfg    config.Config
 	HTTP   *httpclient.Client
 	Logger *slog.Logger
+
+	coverMu    sync.Mutex
+	coverCache map[string][]byte // 专辑内封面字节去重：同一封面 URL 只下载一次
 }
 
 func coverURL(raw string, size int) string {
@@ -71,12 +75,11 @@ func (d *Downloader) DownloadSongAndResources(ctx context.Context, meta model.So
 	}
 
 	result := &DownloadResult{Path: dest, Quality: meta.UsedQuality}
-	lastLog := int64(0)
+	progress := httpclient.ThrottledProgress(d.Logger, base+ext)
 	_, err := d.HTTP.Download(ctx, meta.URL, dest, nil, func(written, total int64) {
 		result.Size = written
-		if d.Logger != nil && (written-lastLog >= 2<<20 || written == total) {
-			lastLog = written
-			d.Logger.Debug("下载进度", "file", base+ext, "written", tag.FormatFileSize(written), "total", tag.FormatFileSize(total))
+		if progress != nil {
+			progress(written, total)
 		}
 	})
 	if err != nil {
@@ -104,7 +107,7 @@ func (d *Downloader) DownloadSongAndResources(ctx context.Context, meta model.So
 	coverMIME := ""
 	if d.Cfg.Metadata.WriteCover && meta.Pic != "" {
 		assetURL := coverURL(meta.Pic, d.Cfg.Metadata.CoverSize)
-		data, contentType, err := d.HTTP.DownloadBytes(ctx, assetURL, nil)
+		data, contentType, err := d.coverBytes(ctx, assetURL)
 		if err != nil {
 			d.warn("下载封面失败", err)
 		} else if len(data) > 0 {
@@ -171,4 +174,28 @@ func (d *Downloader) warn(message string, err error) {
 	if d.Logger != nil {
 		d.Logger.Warn(message, "error", err)
 	}
+}
+
+// coverBytes 下载封面字节并做进程内去重：同一 URL（专辑内多首歌共用）只下载一次，
+// 下载成功且字节数大于 0 才入缓存；失败不入缓存，下次仍会重试。
+func (d *Downloader) coverBytes(ctx context.Context, assetURL string) ([]byte, string, error) {
+	d.coverMu.Lock()
+	if d.coverCache == nil {
+		d.coverCache = make(map[string][]byte)
+	}
+	cached, ok := d.coverCache[assetURL]
+	d.coverMu.Unlock()
+	if ok {
+		return cached, "", nil
+	}
+	data, contentType, err := d.HTTP.DownloadBytes(ctx, assetURL, nil)
+	if err != nil {
+		return nil, contentType, err
+	}
+	if len(data) > 0 {
+		d.coverMu.Lock()
+		d.coverCache[assetURL] = data
+		d.coverMu.Unlock()
+	}
+	return data, contentType, nil
 }

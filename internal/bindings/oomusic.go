@@ -15,7 +15,7 @@ func (s *Service) ooService() *oomusic.Service {
 	s.ooMu.Lock()
 	defer s.ooMu.Unlock()
 	if s.ooSvc == nil {
-		s.ooSvc = oomusic.New(s.cfg(), s.deps.Root, s.httpClient(), s.deps.Logger)
+		s.ooSvc = oomusic.New(s.cfg(), s.deps.Root, s.httpClient(), s.deps.Logger, s.deps.Cache)
 	}
 	return s.ooSvc
 }

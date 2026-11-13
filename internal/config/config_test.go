@@ -33,7 +33,7 @@ func TestValidationCatchesBadFields(t *testing.T) {
 
 func TestStoreCreatesDefaultAndReloads(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "config.yaml")
+	path := filepath.Join(dir, "config.yml")
 	store := NewStore(path)
 
 	if err := store.Load(); err != nil {
@@ -67,7 +67,7 @@ func TestStoreCreatesDefaultAndReloads(t *testing.T) {
 }
 
 func TestSaveRejectsInvalidConfig(t *testing.T) {
-	store := NewStore(filepath.Join(t.TempDir(), "config.yaml"))
+	store := NewStore(filepath.Join(t.TempDir(), "config.yml"))
 	c := Default()
 	c.Network.Timeout = -1
 	err := store.Save(c)
@@ -82,7 +82,7 @@ func TestSaveRejectsInvalidConfig(t *testing.T) {
 
 func TestExportImportRoundTrip(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "config.yaml")
+	path := filepath.Join(dir, "config.yml")
 	store := NewStore(path)
 	if err := store.Load(); err != nil {
 		t.Fatal(err)
@@ -126,13 +126,13 @@ func TestExportImportRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	if other.Get().Download.DefaultQuality != "hires" {
-		t.Fatal("导入结果未原子写回 config.yaml")
+		t.Fatal("导入结果未原子写回 config.yml")
 	}
 }
 
 func TestImportRejectsInvalidConfig(t *testing.T) {
 	dir := t.TempDir()
-	store := NewStore(filepath.Join(dir, "config.yaml"))
+	store := NewStore(filepath.Join(dir, "config.yml"))
 	if err := store.Load(); err != nil {
 		t.Fatal(err)
 	}

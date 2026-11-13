@@ -22,6 +22,7 @@ type MusicInfoCache interface {
 	UpsertMusicInfo(info model.MusicInfo) error
 	GetMusicURL(musicID, quality string) (string, bool, error)
 	UpsertMusicURL(musicID, quality, url string) error
+	DeleteMusicURL(musicID, quality string)
 }
 
 type NextMusicClient struct {
@@ -192,6 +193,13 @@ func (c *NextMusicClient) GetSongURL(ctx context.Context, id, level string) (str
 		_ = c.cache.UpsertMusicURL(id, actual, raw.URL)
 	}
 	return raw.URL, actual, nil
+}
+
+// InvalidateSong 使备用通道的播放地址缓存失效（地址过期重取时调用）。
+func (c *NextMusicClient) InvalidateSong(id, level string) {
+	if c.cache != nil {
+		c.cache.DeleteMusicURL(id, level)
+	}
 }
 
 // Resolve 把三个接口的结果拼装成主流程使用的统一 SongMeta。

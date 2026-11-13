@@ -122,7 +122,8 @@ func parseOOSearch(body []byte) ([]model.OOSong, error) {
 }
 
 // GetSongDetail 保留原始 dict，交由 ParseSongInfo / ListQualityOptions 解析。
-func (c *OOMusicClient) GetSongDetail(ctx context.Context, keyword, songMid string) (map[string]any, error) {
+// 同时返回未经修改的原始响应体，供缓存原始 JSON 使用。
+func (c *OOMusicClient) GetSongDetail(ctx context.Context, keyword, songMid string) (map[string]any, string, error) {
 	msg := keyword
 	if msg == "" {
 		msg = songMid
@@ -130,7 +131,7 @@ func (c *OOMusicClient) GetSongDetail(ctx context.Context, keyword, songMid stri
 	params := url.Values{"msg": {msg}, "type": {"json"}, "mid": {songMid}}
 	body, err := c.get(ctx, params)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	var detail map[string]any
 	if err := json.Unmarshal(body, &detail); err != nil {
@@ -138,13 +139,13 @@ func (c *OOMusicClient) GetSongDetail(ctx context.Context, keyword, songMid stri
 		if err2 := json.Unmarshal(body, &list); err2 == nil && len(list) > 0 {
 			detail = list[0]
 		} else {
-			return nil, fmt.Errorf("解析歌曲详情: %w", err)
+			return nil, "", fmt.Errorf("解析歌曲详情: %w", err)
 		}
 	}
 	if firstNonEmpty(detail["song_mid"], detail["mid"]) == "" {
-		return nil, fmt.Errorf("歌曲详情无效（缺少 song_mid）")
+		return nil, "", fmt.Errorf("歌曲详情无效（缺少 song_mid）")
 	}
-	return detail, nil
+	return detail, string(body), nil
 }
 
 func OOQualitySuffix(quality string) string {

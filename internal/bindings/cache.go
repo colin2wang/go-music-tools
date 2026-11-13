@@ -1,6 +1,7 @@
 package bindings
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"go-music-tools/internal/store"
@@ -27,6 +28,8 @@ var cacheRegions = []struct {
 	{store.RegionPrefs, "偏好（上次下载参数、限流时间戳）"},
 	{store.RegionMusicInfo, "歌曲信息缓存"},
 	{store.RegionMusicURL, "播放地址缓存"},
+	{store.RegionNetEase, "网易云歌曲缓存（主通道）"},
+	{store.RegionOODetail, "OO Music 详情缓存"},
 	{"oo_search", "OO Music 搜索缓存"},
 }
 
@@ -70,13 +73,47 @@ func (s *Service) ListCache(region string) ([]CacheEntry, error) {
 	return out, nil
 }
 
+// CacheDetail 是单个缓存条目的详情视图：格式化后的内容与原始响应 JSON。
+type CacheDetail struct {
+	Formatted string `json:"formatted"`
+	Raw       string `json:"raw"`
+}
+
+// GetCacheDetail 返回指定缓存区某条目的格式化内容；
+// OO Music 详情缓存额外返回缓存的原始响应 JSON（raw 为空表示该区无原始响应）。
+func (s *Service) GetCacheDetail(region, key string) (CacheDetail, error) {
+	if region == "oo_search" {
+		songs := s.ooService().GetSearchCacheSongs(key)
+		formatted, err := json.MarshalIndent(songs, "", "  ")
+		if err != nil {
+			return CacheDetail{}, err
+		}
+		return CacheDetail{Formatted: string(formatted)}, nil
+	}
+	value, ok := s.deps.Cache.Get(region, key)
+	if !ok {
+		return CacheDetail{}, fmt.Errorf("缓存条目不存在: %s", key)
+	}
+	formatted, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return CacheDetail{}, err
+	}
+	detail := CacheDetail{Formatted: string(formatted)}
+	if region == store.RegionOODetail {
+		if val, ok := value.(store.OODetailValue); ok {
+			detail.Raw = val.Raw
+		}
+	}
+	return detail, nil
+}
+
 // ClearCache 清空指定缓存区；key 非空时仅删除该条目。返回删除的条目数。
 func (s *Service) ClearCache(region, key string) (int, error) {
 	if region == "oo_search" {
 		return s.ooService().ClearSearchCache(key), nil
 	}
 	switch region {
-	case store.RegionPrefs, store.RegionMusicInfo, store.RegionMusicURL:
+	case store.RegionPrefs, store.RegionMusicInfo, store.RegionMusicURL, store.RegionNetEase, store.RegionOODetail:
 		count := s.deps.Cache.Count(region)
 		s.deps.Cache.Delete(region, key)
 		if key != "" {

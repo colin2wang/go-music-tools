@@ -43,14 +43,22 @@ type NetEaseClient struct {
 	limit   int
 	retries int
 	logger  *slog.Logger
+	cache   SongCache
 }
 
-func NewNetEase(cfg config.Config, hc *httpclient.Client, logger *slog.Logger) *NetEaseClient {
+// SongCache 由 internal/store.Store 实现，避免 api 包直接依赖具体存储。
+type SongCache interface {
+	GetNetEaseSong(songID, level string) (*model.SongMeta, bool)
+	UpsertNetEaseSong(meta model.SongMeta, level string) error
+	DeleteNetEaseSong(songID, level string)
+}
+
+func NewNetEase(cfg config.Config, hc *httpclient.Client, logger *slog.Logger, cache SongCache) *NetEaseClient {
 	base := strings.TrimRight(cfg.API.BaseURL, "/")
 	hc.SetOrigin(base)
 	return &NetEaseClient{
 		http: hc, baseURL: base, limit: cfg.API.SearchLimit,
-		retries: cfg.Network.MaxRetries, logger: logger,
+		retries: cfg.Network.MaxRetries, logger: logger, cache: cache,
 	}
 }
 
@@ -124,6 +132,11 @@ func creatorString(raw json.RawMessage) string {
 
 // ParseSong 对应 POST /Song_V1。源 API 的 data 没有 duration，size 是字符串。
 func (c *NetEaseClient) ParseSong(ctx context.Context, songID, level string) (*model.SongMeta, error) {
+	if c.cache != nil {
+		if cached, ok := c.cache.GetNetEaseSong(songID, level); ok {
+			return cached, nil
+		}
+	}
 	form := url.Values{"url": {songID}, "level": {level}, "type": {"json"}}
 	headers := c.headers()
 	headers["content-type"] = "application/x-www-form-urlencoded; charset=UTF-8"
@@ -159,12 +172,24 @@ func (c *NetEaseClient) ParseSong(ctx context.Context, songID, level string) (*m
 	if payload.Data.URL == "" {
 		return nil, fmt.Errorf("歌曲 %s 未返回下载地址（%s）", songID, payload.Message)
 	}
-	return &model.SongMeta{
+	meta := &model.SongMeta{
 		Name: payload.Data.Name, Artists: payload.Data.ArName, Album: payload.Data.AlName,
 		ID: jsonString(payload.Data.ID), URL: payload.Data.URL, Level: payload.Data.Level,
 		Size: jsonString(payload.Data.Size), Pic: payload.Data.Pic, Lyric: payload.Data.Lyric,
 		UsedQuality: payload.Data.Level,
-	}, nil
+	}
+	// 成功且标题、地址非空才入缓存；缓存随地址 TTL 一起过期，过期后重新请求。
+	if c.cache != nil {
+		_ = c.cache.UpsertNetEaseSong(*meta, level)
+	}
+	return meta, nil
+}
+
+// InvalidateSong 使网易云主通道的整曲缓存失效（播放地址过期重取时调用）。
+func (c *NetEaseClient) InvalidateSong(songID, level string) {
+	if c.cache != nil {
+		c.cache.DeleteNetEaseSong(songID, level)
+	}
 }
 
 type albumTrack struct {
