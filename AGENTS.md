@@ -20,7 +20,7 @@ go vet ./...
 # 前端构建含 vue-tsc --noEmit 类型检查
 pnpm --dir frontend run build
 
-# 一键构建（产物 build/bin/go-music-tools.exe；无 wails CLI 时自动回退 go build）
+# 一键构建（产物 build/bin/music-tools.exe；无 wails CLI 时自动回退 go build）
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 ```
 

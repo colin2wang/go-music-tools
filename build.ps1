@@ -1,13 +1,13 @@
 # One-click build script for go-music-tools.
 # Steps: precheck pnpm/go -> install frontend deps -> build frontend -> build desktop app.
-# Product: build/bin/go-music-tools.exe (Wails branch and go build fallback use the same path).
+# Product: build/bin/music-tools.exe (Wails branch and go build fallback use the same path).
 # All comments and output are in English by design.
 
 $ErrorActionPreference = "Stop"
 
 $FrontendDir = "frontend"
 $DistIndex = Join-Path $FrontendDir "dist/index.html"
-$OutputPath = "build/bin/go-music-tools.exe"
+$OutputPath = "build/bin/music-tools.exe"
 
 function Fail($message) {
     Write-Host "[build] ERROR: $message" -ForegroundColor Red
