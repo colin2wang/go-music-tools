@@ -243,7 +243,7 @@ func OOParseSongInfo(detail map[string]any) model.OODetail {
 		ext = options[0].Ext
 	}
 	return model.OODetail{
-		Title:          firstNonEmpty(detail["song_name"], detail["song_title"]),
+		Title:          firstNonEmpty(detail["song_title"], detail["song_name"]),
 		Artist:         ooString(detail, "singer_name"),
 		Album:          firstNonEmpty(detail["album_name"], detail["album_title"]),
 		SongMid:        firstNonEmpty(detail["song_mid"], detail["mid"]),

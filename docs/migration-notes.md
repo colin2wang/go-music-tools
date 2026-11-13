@@ -49,7 +49,7 @@ form：`url`(歌曲 ID)、`level`、`type=json`。
 ### OO Music（`https://tang.api.s01s.cn/music_open_api.php`）
 搜索 `?msg={keyword}&type=json` → `[{song_title, singer_name, song_mid, pay}]`；
 详情 `?msg={singer_name}&type=json&mid={song_mid}`。
-原始 key：标题优先 `song_name` 否则 `song_title`；专辑优先 `album_name` 否则 `album_title`；
+原始 key：标题优先 `song_title` 否则 `song_name`；专辑优先 `album_name` 否则 `album_title`；
 封面 `album_pic`；LRC `song_lyric`；纯文本 `lyric`；`qrc`；`singer_pic`；`song_h5_url`；`song_play_time`/`duration`；`vip`/`language`/`genre`/`public_time`。
 带后缀字段（后缀 ∈ `sq|hq|standard|fq`）各 5 类：`song_play_url_{s}`、`song_filename_{s}`、`kbps_{s}`、`song_size_{s}`、`song_size_{s}_str`。
 音质映射 `SQ→sq`、`HQ→hq`、`standard→standard`、`low→fq`，回退顺序 `SQ, HQ, standard, low`。
