@@ -9,12 +9,6 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '下载工作台', icon: 'download' },
   },
   {
-    path: '/search',
-    name: 'search',
-    component: () => import('@/views/SearchView.vue'),
-    meta: { title: '音乐搜索', icon: 'search' },
-  },
-  {
     path: '/oomusic',
     name: 'oomusic',
     component: () => import('@/views/OOMusicView.vue'),

@@ -7,7 +7,6 @@ import { useTaskStore } from '@/stores/task'
 import { useConfigStore } from '@/stores/config'
 import { bindings } from '@/api/bindings'
 import LanguageSwitcher from './LanguageSwitcher.vue'
-import TaskMiniDonut from '@/components/common/TaskMiniDonut.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -46,8 +45,16 @@ async function openDownloads() {
     </div>
 
     <div class="ml-auto flex items-center gap-3">
-      <div class="hidden items-center md:flex">
-        <TaskMiniDonut :summary="summary" />
+      <div
+        v-if="summary.count > 0"
+        class="hidden items-center gap-2.5 rounded-full border border-[var(--border-soft)] bg-[rgba(148,163,184,0.05)] px-3 py-1.5 text-[11.5px] md:flex"
+        :title="t('task.donutTitle')"
+      >
+        <span class="font-mono text-[var(--brand-300)]">{{ summary.current }}/{{ summary.total }}</span>
+        <span class="flex items-center gap-1 text-[var(--ok)]"><CheckCircle2 :size="12" /> {{ summary.success }}</span>
+        <span class="flex items-center gap-1 text-[var(--warn)]"><SkipForward :size="12" /> {{ summary.skipped }}</span>
+        <span class="flex items-center gap-1 text-[var(--err)]"><XCircle :size="12" /> {{ summary.failed }}</span>
+        <span class="font-mono text-[var(--text-muted)]">{{ summary.percent }}%</span>
       </div>
 
       <div
@@ -58,19 +65,6 @@ async function openDownloads() {
       >
         <Radio :size="13" :class="statusTone === 'active' ? 'animate-pulse-soft' : ''" />
         <span class="max-w-[180px] truncate font-medium">{{ statusText }}</span>
-        <span v-if="summary.total > 0" class="font-mono text-[var(--text-muted)]">
-          {{ summary.current }}/{{ summary.total }}
-        </span>
-      </div>
-
-      <div
-        v-if="summary.total > 0"
-        class="hidden items-center gap-2.5 rounded-full border border-[var(--border-soft)] bg-[rgba(148,163,184,0.05)] px-3 py-1.5 text-[11.5px] xl:flex"
-      >
-        <span class="flex items-center gap-1 text-[var(--ok)]"><CheckCircle2 :size="12" /> {{ summary.success }}</span>
-        <span class="flex items-center gap-1 text-[var(--warn)]"><SkipForward :size="12" /> {{ summary.skipped }}</span>
-        <span class="flex items-center gap-1 text-[var(--err)]"><XCircle :size="12" /> {{ summary.failed }}</span>
-        <span class="font-mono text-[var(--brand-300)]">{{ summary.percent }}%</span>
       </div>
 
       <button

@@ -21,7 +21,7 @@ type MetadataService struct {
 
 // Get 是元数据请求的唯一入口：跨任务限流 → 重试 → 音质校验 → 记录时间戳。
 func (m *MetadataService) Get(ctx context.Context, songID, level string) (*model.SongMeta, error) {
-	if err := httpclient.WaitMetadataInterval(ctx, m.Store, m.Cfg.Network.GetMetadataInterval); err != nil {
+	if err := httpclient.WaitMetadataInterval(ctx, m.Logger, m.Store, m.Cfg.Network.GetMetadataInterval); err != nil {
 		return nil, err
 	}
 	defer func() { _ = httpclient.MarkMetadataFinish(m.Store) }()

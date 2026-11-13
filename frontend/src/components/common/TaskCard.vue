@@ -18,7 +18,6 @@ const KIND_KEYS: Record<string, string> = {
   'download:song': 'task.kindSong',
   'download:album': 'task.kindAlbum',
   'download:playlist': 'task.kindPlaylist',
-  'download:songs': 'task.kindSongs',
   'oomusic:single': 'task.kindOOSingle',
   'oomusic:batch': 'task.kindOOBatch',
 }

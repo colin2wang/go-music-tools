@@ -22,7 +22,6 @@ type Config struct {
 type APIConfig struct {
 	BaseURL            string `yaml:"base_url" json:"base_url"`
 	InsecureSkipVerify bool   `yaml:"insecure_skip_verify" json:"insecure_skip_verify"`
-	SearchLimit        int    `yaml:"search_limit" json:"search_limit"`
 }
 
 type DownloadConfig struct {
@@ -92,7 +91,7 @@ var LogLevels = []string{"debug", "info", "warn", "error"}
 func Default() Config {
 	return Config{
 		API: APIConfig{
-			BaseURL: "https://dm.jfjt.cc/", InsecureSkipVerify: true, SearchLimit: 10,
+			BaseURL: "https://dm.jfjt.cc/", InsecureSkipVerify: true,
 		},
 		Download: DownloadConfig{
 			DefaultDir: "downloads", DefaultQuality: "lossless",
@@ -158,9 +157,6 @@ func (c Config) Validate() map[string]string {
 		errs["api.base_url"] = "API 根地址不能为空"
 	} else if u, err := url.Parse(c.API.BaseURL); err != nil || u.Scheme == "" || u.Host == "" {
 		errs["api.base_url"] = "必须是包含协议与主机的完整 URL"
-	}
-	if c.API.SearchLimit < 1 || c.API.SearchLimit > 100 {
-		errs["api.search_limit"] = "取值范围 1 - 100"
 	}
 	if strings.TrimSpace(c.Download.DefaultDir) == "" {
 		errs["download.default_dir"] = "下载目录不能为空"

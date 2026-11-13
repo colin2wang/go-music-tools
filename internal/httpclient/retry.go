@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -25,7 +26,9 @@ func SleepContext(ctx context.Context, d time.Duration) error {
 	}
 }
 
-func RandomDelay(ctx context.Context, minSeconds, maxSeconds float64) error {
+// RandomDelay 等待 [minSeconds, maxSeconds] 区间内的随机时长；logger 非 nil 时
+// 先输出等待日志再进入等待，保证日志顺序与实际等待一致。
+func RandomDelay(ctx context.Context, logger *slog.Logger, minSeconds, maxSeconds float64) error {
 	if maxSeconds <= 0 {
 		return nil
 	}
@@ -38,6 +41,9 @@ func RandomDelay(ctx context.Context, minSeconds, maxSeconds float64) error {
 	d := minSeconds
 	if maxSeconds > minSeconds {
 		d = minSeconds + rand.Float64()*(maxSeconds-minSeconds)
+	}
+	if d > 0 && logger != nil {
+		logger.Info("请求等待", "seconds", d)
 	}
 	return SleepContext(ctx, time.Duration(d*float64(time.Second)))
 }
@@ -69,7 +75,7 @@ func (c *Client) RequestWithRetry(ctx context.Context, method, rawURL string, bo
 	}
 	var lastErr error
 	for i := 0; i < attempts; i++ {
-		if err := RandomDelay(ctx, c.cfg.APIDelayMin, c.cfg.RandomDelayMax); err != nil {
+		if err := RandomDelay(ctx, c.logger, c.cfg.APIDelayMin, c.cfg.RandomDelayMax); err != nil {
 			return nil, err
 		}
 		var body io.Reader
@@ -126,13 +132,18 @@ type MetadataIntervalStore interface {
 	SetMetadataTimestamp(float64) error
 }
 
-func WaitMetadataInterval(ctx context.Context, store MetadataIntervalStore, interval float64) error {
+// WaitMetadataInterval 等待两次元数据请求之间的最小间隔；logger 非 nil 时
+// 先输出等待日志再进入等待，保证日志顺序与实际等待一致。
+func WaitMetadataInterval(ctx context.Context, logger *slog.Logger, store MetadataIntervalStore, interval float64) error {
 	if store == nil || interval <= 0 {
 		return nil
 	}
 	last, _ := store.GetMetadataTimestamp()
 	now := float64(time.Now().UnixNano()) / 1e9
 	if wait := interval - (now - last); wait > 0 {
+		if logger != nil {
+			logger.Info("元数据限流等待", "seconds", wait)
+		}
 		return SleepContext(ctx, time.Duration(wait*float64(time.Second)))
 	}
 	return nil

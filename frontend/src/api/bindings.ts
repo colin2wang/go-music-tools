@@ -12,7 +12,6 @@ import type {
   OODownloadRequest,
   OOSong,
   QualityOption,
-  SearchSong,
   TaskBoard,
   TaskDone,
   TaskQueueSnapshot,
@@ -92,10 +91,8 @@ export const bindings = {
   getLastPreference: () => call<LastPreference>('GetLastDownloadConfig'),
   saveLastPreference: (p: LastPreference) => call<void>('SaveLastDownloadConfig', p),
   download: (req: DownloadRequest) => call<string>('Download', req),
-  downloadSongs: (ids: string[], quality: string) => call<string>('DownloadSongs', ids, quality),
   parseIndexes: (raw: string) => call<number[]>('ParseIndexes', raw),
   extractResourceID: (raw: string) => call<string>('ExtractResourceID', raw),
-  searchSongs: (keyword: string) => call<SearchSong[]>('SearchSongs', keyword),
 
   // OO Music
   ooSearch: (keyword: string) => call<OOSong[]>('OOSearch', keyword),

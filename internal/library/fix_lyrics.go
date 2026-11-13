@@ -111,7 +111,7 @@ func (s *Service) FixLyrics(ctx context.Context, folder string, recursive bool) 
 		if s.Logger != nil {
 			s.Logger.Info("歌词已修复", "song", song.Name, "file", filepath.Base(file))
 		}
-		if err := httpclient.RandomDelay(ctx, 2.0, 2.0); err != nil {
+		if err := httpclient.RandomDelay(ctx, s.Logger, 2.0, 2.0); err != nil {
 			return "", err
 		}
 	}

@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"go-music-tools/internal/config"
 	"go-music-tools/internal/task"
@@ -26,6 +27,7 @@ type Hub struct {
 	ring    *Ring
 	batch   *batchHandler
 	file    *lumberjack.Logger
+	fileDay string
 	logger  *slog.Logger
 	logDir  string
 	emitter EmitFunc
@@ -49,14 +51,15 @@ func NewHub(cfg config.LoggingConfig, root string) (*Hub, error) {
 		batch:  newBatchHandler(cfg.EventBatchSize, cfg.EventFlushMS),
 		logDir: dir,
 	}
-	h.file = h.newFileLogger(dir, cfg)
+	h.fileDay = time.Now().Format("2006-01-02")
+	h.file = h.newFileLogger(dir, cfg, h.fileDay)
 	h.logger = slog.New(&hubHandler{hub: h})
 	return h, nil
 }
 
-func (h *Hub) newFileLogger(dir string, cfg config.LoggingConfig) *lumberjack.Logger {
+func (h *Hub) newFileLogger(dir string, cfg config.LoggingConfig, day string) *lumberjack.Logger {
 	return &lumberjack.Logger{
-		Filename:   filepath.Join(dir, "app.log"),
+		Filename:   filepath.Join(dir, "app-"+day+".log"),
 		MaxSize:    cfg.MaxFileSizeMB,
 		MaxBackups: cfg.MaxBackups,
 		MaxAge:     cfg.MaxAgeDays,
@@ -71,6 +74,30 @@ func resolveDir(root, dir string) string {
 		return dir
 	}
 	return filepath.Join(root, dir)
+}
+
+// fileFor 返回当前应写入的日志文件；跨天时切换到新日期文件（按天 rolling，
+// 天内仍由 lumberjack 按大小轮转）。写路径在每次 Handle 时调用，代价是一次读锁。
+func (h *Hub) fileFor(now time.Time) *lumberjack.Logger {
+	day := now.Format("2006-01-02")
+	h.mu.RLock()
+	if h.fileDay == day {
+		f := h.file
+		h.mu.RUnlock()
+		return f
+	}
+	h.mu.RUnlock()
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.fileDay != day {
+		if h.file != nil {
+			_ = h.file.Close()
+		}
+		h.fileDay = day
+		h.file = h.newFileLogger(h.logDir, h.cfg, day)
+	}
+	return h.file
 }
 
 func (h *Hub) Logger() *slog.Logger { return h.logger }
@@ -123,8 +150,9 @@ func (h *Hub) ApplyConfig(cfg config.LoggingConfig) {
 		if h.file != nil {
 			_ = h.file.Close()
 		}
-		h.file = h.newFileLogger(dir, cfg)
 		h.logDir = dir
+		h.fileDay = time.Now().Format("2006-01-02")
+		h.file = h.newFileLogger(dir, cfg, h.fileDay)
 	} else {
 		h.file.MaxSize = cfg.MaxFileSizeMB
 		h.file.MaxBackups = cfg.MaxBackups
@@ -197,7 +225,6 @@ func (h *hubHandler) Handle(_ context.Context, r slog.Record) error {
 
 	h.hub.mu.RLock()
 	cfg := h.hub.cfg
-	file := h.hub.file
 	h.hub.mu.RUnlock()
 
 	entry := LogEntry{
@@ -219,8 +246,10 @@ func (h *hubHandler) Handle(_ context.Context, r slog.Record) error {
 	if cfg.ConsoleOutput {
 		fmt.Fprintln(os.Stdout, line)
 	}
-	if cfg.FileOutput && file != nil {
-		fmt.Fprintln(file, line)
+	if cfg.FileOutput {
+		if file := h.hub.fileFor(r.Time); file != nil {
+			fmt.Fprintln(file, line)
+		}
 	}
 	return nil
 }

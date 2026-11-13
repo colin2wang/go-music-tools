@@ -49,15 +49,6 @@ type PlaylistMeta struct {
 	Songs       []SongDetail `json:"songs"`
 }
 
-type SearchSong struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Artists  string `json:"artists"`
-	Album    string `json:"album"`
-	Pic      string `json:"pic"`
-	Duration int    `json:"duration"`
-}
-
 type QualityOption struct {
 	Quality string `json:"quality"`
 	Kbps    string `json:"kbps"`

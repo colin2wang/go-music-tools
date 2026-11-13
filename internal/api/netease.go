@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -40,7 +39,6 @@ func ExtractResourceID(raw string) string {
 type NetEaseClient struct {
 	http    *httpclient.Client
 	baseURL string
-	limit   int
 	retries int
 	logger  *slog.Logger
 	cache   SongCache
@@ -57,7 +55,7 @@ func NewNetEase(cfg config.Config, hc *httpclient.Client, logger *slog.Logger, c
 	base := strings.TrimRight(cfg.API.BaseURL, "/")
 	hc.SetOrigin(base)
 	return &NetEaseClient{
-		http: hc, baseURL: base, limit: cfg.API.SearchLimit,
+		http: hc, baseURL: base,
 		retries: cfg.Network.MaxRetries, logger: logger, cache: cache,
 	}
 }
@@ -310,96 +308,4 @@ func (c *NetEaseClient) ParsePlaylist(ctx context.Context, playlistID string) (*
 		PlaylistID: jsonString(pl.ID), Name: pl.Name, Creator: creatorString(pl.Creator),
 		Description: pl.Description, CoverURL: pl.CoverImgURL, SongCount: count, Songs: songs,
 	}, nil
-}
-
-// Search 调用原版已定义但未接入的 /Search 接口；对代理可能返回的几种结构做兼容解析。
-func (c *NetEaseClient) Search(ctx context.Context, keyword string) ([]model.SearchSong, error) {
-	form := url.Values{"keyword": {keyword}, "limit": {strconv.Itoa(c.limit)}}
-	headers := c.headers()
-	headers["content-type"] = "application/x-www-form-urlencoded; charset=UTF-8"
-	resp, err := c.http.RequestWithRetry(ctx, http.MethodPost, c.endpoint("/Search"),
-		func() io.Reader { return strings.NewReader(form.Encode()) }, headers, c.retries)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("/Search 返回 HTTP %d", resp.StatusCode)
-	}
-	return parseSearchResponse(resp.Body)
-}
-
-func parseSearchResponse(body []byte) ([]model.SearchSong, error) {
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(body, &raw); err != nil {
-		return nil, fmt.Errorf("解析搜索响应: %w", err)
-	}
-	data := raw["data"]
-	if len(data) == 0 || string(data) == "null" {
-		return []model.SearchSong{}, nil
-	}
-	var list []json.RawMessage
-	if err := json.Unmarshal(data, &list); err == nil {
-		return searchSongsFromList(list), nil
-	}
-	var obj map[string]json.RawMessage
-	if err := json.Unmarshal(data, &obj); err != nil {
-		return []model.SearchSong{}, nil
-	}
-	for _, key := range []string{"songs", "list", "result", "results"} {
-		if value, ok := obj[key]; ok {
-			if err := json.Unmarshal(value, &list); err == nil {
-				return searchSongsFromList(list), nil
-			}
-		}
-	}
-	return []model.SearchSong{}, nil
-}
-
-func searchSongsFromList(list []json.RawMessage) []model.SearchSong {
-	out := make([]model.SearchSong, 0, len(list))
-	for _, item := range list {
-		var song struct {
-			ID       json.RawMessage `json:"id"`
-			Name     string          `json:"name"`
-			Artists  json.RawMessage `json:"artists"`
-			ArName   string          `json:"ar_name"`
-			Album    json.RawMessage `json:"album"`
-			AlName   string          `json:"al_name"`
-			PicURL   string          `json:"picUrl"`
-			Pic      string          `json:"pic"`
-			Duration json.RawMessage `json:"duration"`
-		}
-		if err := json.Unmarshal(item, &song); err != nil {
-			continue
-		}
-		artists := artistsString(song.Artists)
-		if artists == "" {
-			artists = song.ArName
-		}
-		album := song.AlName
-		if album == "" {
-			album = artistsString(song.Album)
-			if album == "" {
-				var obj struct {
-					Name string `json:"name"`
-				}
-				if err := json.Unmarshal(song.Album, &obj); err == nil {
-					album = obj.Name
-				}
-			}
-		}
-		pic := song.PicURL
-		if pic == "" {
-			pic = song.Pic
-		}
-		var duration int
-		if d, err := strconv.Atoi(jsonString(song.Duration)); err == nil {
-			duration = d
-		}
-		out = append(out, model.SearchSong{
-			ID: jsonString(song.ID), Name: song.Name, Artists: artists,
-			Album: album, Pic: pic, Duration: duration,
-		})
-	}
-	return out
 }

@@ -83,10 +83,6 @@ func (s *Service) GetPlaylist(ctx context.Context, id string) (*model.PlaylistMe
 	return s.NetEase.ParsePlaylist(ctx, api.ExtractResourceID(id))
 }
 
-func (s *Service) Search(ctx context.Context, keyword string) ([]model.SearchSong, error) {
-	return s.NetEase.Search(ctx, keyword)
-}
-
 // resolveAndDownload 获取元数据并下载；若下载因播放地址失效（403/404/410）失败，
 // 则使缓存失效、重新获取地址并重试一次，仍失败才返回错误。
 func (s *Service) resolveAndDownload(ctx context.Context, songID, level, dir string, index int, name string) (*DownloadResult, error) {

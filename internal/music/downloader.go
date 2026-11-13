@@ -70,11 +70,14 @@ func (d *Downloader) DownloadSongAndResources(ctx context.Context, meta model.So
 		}
 	}
 
-	if err := httpclient.RandomDelay(ctx, d.Cfg.Network.APIDelayMin, d.Cfg.Network.RandomDelayMax); err != nil {
+	if err := httpclient.RandomDelay(ctx, d.Logger, d.Cfg.Network.APIDelayMin, d.Cfg.Network.RandomDelayMax); err != nil {
 		return nil, err
 	}
 
 	result := &DownloadResult{Path: dest, Quality: meta.UsedQuality}
+	if d.Logger != nil {
+		d.Logger.Info("音频资源 URL", "song_id", meta.ID, "quality", meta.UsedQuality, "url", meta.URL)
+	}
 	progress := httpclient.ThrottledProgress(d.Logger, base+ext)
 	_, err := d.HTTP.Download(ctx, meta.URL, dest, nil, func(written, total int64) {
 		result.Size = written
@@ -107,6 +110,9 @@ func (d *Downloader) DownloadSongAndResources(ctx context.Context, meta model.So
 	coverMIME := ""
 	if d.Cfg.Metadata.WriteCover && meta.Pic != "" {
 		assetURL := coverURL(meta.Pic, d.Cfg.Metadata.CoverSize)
+		if d.Logger != nil {
+			d.Logger.Info("封面资源 URL", "song_id", meta.ID, "size", d.Cfg.Metadata.CoverSize, "url", assetURL)
+		}
 		data, contentType, err := d.coverBytes(ctx, assetURL)
 		if err != nil {
 			d.warn("下载封面失败", err)

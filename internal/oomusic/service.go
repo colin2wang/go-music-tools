@@ -166,6 +166,9 @@ func (s *Service) Download(ctx context.Context, keyword, songMid, quality string
 			return "", false, err
 		}
 		actualQuality, ext, kbps = aq, e, kb
+		if s.Logger != nil {
+			s.Logger.Info("OO Music 音频资源 URL", "song_mid", songMid, "quality", actualQuality, "url", playURL)
+		}
 		dest = filepath.Join(dir, base+ext)
 		if attempt == 0 && s.Cfg.Download.SkipExisting {
 			if stat, err := os.Stat(dest); err == nil && stat.Size() > 0 {
@@ -175,7 +178,7 @@ func (s *Service) Download(ctx context.Context, keyword, songMid, quality string
 				return dest, true, nil
 			}
 		}
-		if err := httpclient.RandomDelay(ctx, s.Cfg.Network.APIDelayMin, s.Cfg.Network.RandomDelayMax); err != nil {
+		if err := httpclient.RandomDelay(ctx, s.Logger, s.Cfg.Network.APIDelayMin, s.Cfg.Network.RandomDelayMax); err != nil {
 			return "", false, err
 		}
 		_, dlErr := s.HTTP.Download(ctx, playURL, dest, nil, httpclient.ThrottledProgress(s.Logger, base+ext))
@@ -203,6 +206,9 @@ func (s *Service) Download(ctx context.Context, keyword, songMid, quality string
 	var cover []byte
 	coverMIME := ""
 	if info.CoverURL != "" {
+		if s.Logger != nil {
+			s.Logger.Info("OO Music 封面资源 URL", "song_mid", songMid, "url", info.CoverURL)
+		}
 		data, contentType, err := s.HTTP.DownloadBytes(ctx, info.CoverURL, nil)
 		if err != nil {
 			s.warn("下载封面失败", err)

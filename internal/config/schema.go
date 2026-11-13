@@ -42,9 +42,8 @@ func schemaDefs() []groupDef {
 		{
 			key: "api", label: "API 接口", desc: "网易云代理服务的地址与安全选项",
 			fields: []fieldDef{
-				{"base_url", "API 根地址", "string", "代理服务根地址，用于 /Song_V1、/Album、/Playlist、/Search", nil, nil, nil, true},
+				{"base_url", "API 根地址", "string", "代理服务根地址，用于 /Song_V1、/Album、/Playlist", nil, nil, nil, true},
 				{"insecure_skip_verify", "跳过 TLS 校验", "bool", "第三方代理证书常有问题，仅建议对该代理开启", nil, nil, nil, false},
-				{"search_limit", "搜索条数", "int", "单次关键词搜索返回的最大结果数", nil, num(1), num(100), true},
 			},
 		},
 		{

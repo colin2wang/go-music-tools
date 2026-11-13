@@ -94,12 +94,12 @@ export const useTaskStore = defineStore('task', {
     finishedTasks: (state): TaskEntry[] => state.entries.filter((e) => isFinished(e.status)),
     activeCount: (state): number =>
       state.entries.filter((e) => e.status === 'running' || e.status === 'queued').length,
-    summary: (state): TaskSummary => summarize(state.entries.filter((e) => e.status === 'running')),
-    percent: (state): number => summarize(state.entries.filter((e) => e.status === 'running')).percent,
+    summary: (state): TaskSummary => summarize(state.entries.filter((e) => e.status !== 'removed')),
+    percent: (state): number => summarize(state.entries.filter((e) => e.status !== 'removed')).percent,
     hasTask: (state): boolean => state.entries.length > 0,
     lastFinished: (state): TaskEntry | null => state.entries.find((e) => isFinished(e.status)) ?? null,
     laneSummary: (state) => (lane: TaskLane): TaskSummary =>
-      summarize(state.entries.filter((e) => e.lane === lane && e.status === 'running')),
+      summarize(state.entries.filter((e) => e.lane === lane && e.status !== 'removed')),
     laneActive: (state) => (lane: TaskLane): TaskEntry | null =>
       state.entries.find((e) => e.lane === lane && e.status === 'running') ?? null,
     laneItems: (state) => (lane: TaskLane): TaskItemResult[] => {

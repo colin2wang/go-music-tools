@@ -145,15 +145,6 @@ export interface DownloadRequest {
   indexes: number[]
 }
 
-export interface SearchSong {
-  id: string
-  name: string
-  artists: string
-  album: string
-  pic: string
-  duration: number
-}
-
 export interface QualityOption {
   quality: string
   kbps: string

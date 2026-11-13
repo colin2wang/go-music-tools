@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
-  Download, Search, Music2, FolderOpen, Settings, ChevronLeft, ChevronRight,
+  Download, Music2, FolderOpen, Settings, ChevronLeft, ChevronRight,
   Activity, Disc3, Database,
 } from 'lucide-vue-next'
 
@@ -16,7 +16,6 @@ const { t } = useI18n()
 
 const items = computed(() => [
   { path: '/download', label: t('router.download'), hint: t('router.hintDownload'), icon: Download },
-  { path: '/search', label: t('router.search'), hint: t('router.hintSearch'), icon: Search },
   { path: '/oomusic', label: t('router.oomusic'), hint: t('router.hintOO'), icon: Music2 },
   { path: '/library', label: t('router.library'), hint: t('router.hintLibrary'), icon: FolderOpen },
   { path: '/cache', label: t('router.cache'), hint: t('router.hintCache'), icon: Database },
