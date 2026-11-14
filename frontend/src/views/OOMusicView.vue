@@ -29,6 +29,7 @@ const elapsedMS = ref(0)
 const searched = ref<string[]>([])
 const cacheHit = ref(false)
 const lyricOpen = ref(false)
+const resultsEl = ref<HTMLElement | null>(null)
 
 const active = computed(() => results.value.find((song) => song.song_mid === activeMid.value) ?? null)
 const available = computed(() =>
@@ -82,6 +83,7 @@ async function search() {
   if (!cacheHit.value) searched.value.push(value)
   activeMid.value = ''
   detail.value = null
+  resultsEl.value?.scrollTo({ top: 0 })
   flash(true, t('oo.found', { n: list.length, hit: cacheHit.value ? t('oo.cacheHit') : '' }))
   if (list.length) await selectSong(list[0])
 }
@@ -191,7 +193,7 @@ function pickQuality(value: string) {
           <p class="text-[12px] text-[var(--text-secondary)]">{{ t('oo.emptyTitle') }}</p>
           <p class="text-[11px] leading-relaxed text-[var(--text-muted)]">{{ t('oo.emptyHint') }}</p>
         </div>
-        <div v-else class="max-h-[520px] space-y-1.5 overflow-y-auto p-2.5">
+        <div v-else ref="resultsEl" class="max-h-[520px] space-y-1.5 overflow-y-auto p-2.5">
           <button v-for="(song, index) in results" :key="song.song_mid" type="button"
             class="flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all duration-150"
             :class="activeMid === song.song_mid
