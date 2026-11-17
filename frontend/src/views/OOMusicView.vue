@@ -65,7 +65,9 @@ function fail(err: unknown): null {
 }
 
 function isPaid(song: OOSong): boolean {
-  return !!song.pay && song.pay !== '0' && song.pay.toLowerCase() !== 'false'
+  const pay = song.pay.trim().toLowerCase()
+  if (!pay || pay === '0' || pay === 'false' || pay === '免费') return false
+  return pay !== 'free'
 }
 
 async function search() {
