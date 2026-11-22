@@ -158,7 +158,16 @@ func (s *Service) PrepareAlbumFolder(ctx context.Context, album *model.AlbumMeta
 		return "", err
 	}
 	if album.AlbumID != "" {
-		if err := writeText(filepath.Join(root, album.AlbumID+".txt"), album.Name+"\n"); err != nil {
+		var songs strings.Builder
+		songs.WriteString(fmt.Sprintf("Album ID: %s\n", album.AlbumID))
+		songs.WriteString(fmt.Sprintf("Album: %s\n", album.Name))
+		songs.WriteString(fmt.Sprintf("Artist: %s\n", album.Artist))
+		songs.WriteString(strings.Repeat("=", 60) + "\n")
+		songs.WriteString("Songs:\n")
+		for _, song := range album.Songs {
+			songs.WriteString(fmt.Sprintf("%d. %s - %s (ID: %s)\n", song.Index, song.Name, song.Artists, song.ID))
+		}
+		if err := writeText(filepath.Join(root, album.AlbumID+".txt"), songs.String()); err != nil {
 			return "", err
 		}
 	}
