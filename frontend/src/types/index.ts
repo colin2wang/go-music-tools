@@ -47,6 +47,8 @@ export interface LaneState {
 export interface TaskEntry {
   task_id: string
   kind: string
+  /** 提交时附带的人类可读摘要：下载为资源 ID，OO Music 为歌曲名，库修补为目录。 */
+  summary: string
   lane: TaskLane
   status: TaskStatus
   stage: string

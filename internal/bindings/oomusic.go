@@ -100,7 +100,7 @@ func (s *Service) OODownload(req OODownloadRequest) (string, error) {
 			r.Item(mid, status, path)
 		}
 		return nil
-	}, task.WithRetry(retry))
+	}, task.WithSummary(req.Keyword), task.WithRetry(retry))
 }
 
 func (s *Service) OOBatchDownload(keyword, quality string) (string, error) {
@@ -126,5 +126,5 @@ func (s *Service) OOBatchDownload(keyword, quality string) (string, error) {
 	return s.start("oomusic:batch", 0, func(ctx context.Context, r *task.Reporter) error {
 		s.deps.Logger.Info("OO Music 批量下载开始", "keyword", keyword, "quality", quality)
 		return svc.BatchDownload(ctx, keyword, quality, r)
-	}, task.WithRetry(retry))
+	}, task.WithSummary(keyword), task.WithRetry(retry))
 }

@@ -118,7 +118,7 @@ func (m *Manager) Start(kind string, total int, fn TaskFunc, opts ...StartOption
 	m.mu.Lock()
 	lr := m.lanes[lane]
 	entry := &TaskEntry{
-		TaskID: id, Kind: kind, Lane: lane,
+		TaskID: id, Kind: kind, Summary: options.summary, Lane: lane,
 		Status: TaskStatusQueued, Stage: "排队中",
 		EnqueuedAt: now, Total: total,
 		CanRetry: options.retry != nil,
@@ -515,7 +515,11 @@ func (m *Manager) RetryFailedItems(taskID string) (string, error) {
 		m.logger.Info("重试失败子项", "source_task", taskID, "kind", newKind,
 			"lane", lane, "count", len(failed))
 	}
-	return m.Start(newKind, len(failed), fn, WithRetry(factory))
+	opts := []StartOption{WithRetry(factory)}
+	if e.Summary != "" {
+		opts = append(opts, WithSummary(e.Summary))
+	}
+	return m.Start(newKind, len(failed), fn, opts...)
 }
 
 func (m *Manager) Queued() []QueuedTask {

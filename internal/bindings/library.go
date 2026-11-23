@@ -51,5 +51,5 @@ func (s *Service) RunLibraryFix(req LibraryFixRequest) (string, error) {
 		s.deps.Logger.Info("批量修补任务结束", "kind", kind,
 			"folders", len(results), "success", success, "failed", len(results)-success)
 		return err
-	})
+	}, task.WithSummary(directory))
 }

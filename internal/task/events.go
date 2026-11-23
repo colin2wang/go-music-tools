@@ -90,6 +90,7 @@ type LaneState struct {
 type TaskEntry struct {
 	TaskID      string       `json:"task_id"`
 	Kind        string       `json:"kind"`
+	Summary     string       `json:"summary"` // 提交时附带的人类可读摘要，如资源 ID、歌曲名、目录
 	Lane        Lane         `json:"lane"`
 	Status      string       `json:"status"` // queued | running | done | failed | cancelled | removed
 	Stage       string       `json:"stage"`
@@ -152,7 +153,8 @@ type Done struct {
 type RetryFactory func(failed []ItemResult) (TaskFunc, error)
 
 type startOptions struct {
-	retry RetryFactory
+	retry   RetryFactory
+	summary string
 }
 
 // StartOption 在提交任务时附加可选行为。
@@ -161,4 +163,9 @@ type StartOption func(*startOptions)
 // WithRetry 注入失败子项重试工厂；未注入的任务 CanRetry 为 false，界面会禁用重试。
 func WithRetry(fn RetryFactory) StartOption {
 	return func(o *startOptions) { o.retry = fn }
+}
+
+// WithSummary 设置任务的人类可读摘要，供任务面板展示。
+func WithSummary(summary string) StartOption {
+	return func(o *startOptions) { o.summary = summary }
 }

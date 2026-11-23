@@ -208,9 +208,6 @@ const noticeText = computed(() => {
   grid-template-columns: minmax(0, 1fr);
   gap: 8px;
 }
-@media (min-width: 1400px) {
-  .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 .card-enter-active, .card-leave-active { transition: opacity 220ms ease, transform 220ms ease; }
 .card-enter-from { opacity: 0; transform: translateY(8px) scale(0.985); }
 .card-leave-to { opacity: 0; transform: translateY(-6px) scale(0.985); }

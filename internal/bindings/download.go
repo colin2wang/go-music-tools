@@ -68,7 +68,7 @@ func (s *Service) Download(req DownloadRequest) (string, error) {
 			s.deps.Logger.Error("下载任务失败", "kind", kind, "error", err)
 		}
 		return err
-	}, task.WithRetry(retry))
+	}, task.WithSummary(resourceID), task.WithRetry(retry))
 }
 
 func (s *Service) ParseIndexes(raw string) []int { return music.ParseIndexes(raw) }

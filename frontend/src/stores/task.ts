@@ -153,6 +153,7 @@ export const useTaskStore = defineStore('task', {
         this.entries.unshift({
           task_id: p.task_id,
           kind: p.kind,
+          summary: '',
           lane: p.lane ?? 'workbench',
           status: p.done ? (p.cancelled ? 'cancelled' : p.error ? 'failed' : 'done') : 'running',
           stage: p.stage,

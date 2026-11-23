@@ -99,8 +99,9 @@ function itemIcon(status: string): Component {
       </span>
 
       <div class="min-w-0 flex-1">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 min-w-0">
           <span class="truncate text-[12px] font-semibold text-[var(--text-primary)]" :title="entry.kind">{{ kindLabel }}</span>
+          <span v-if="entry.summary" class="min-w-0 truncate text-[11px] text-[var(--text-secondary)]" :title="entry.summary">{{ entry.summary }}</span>
           <span v-if="position" class="queue-position">#{{ position }}</span>
         </div>
         <p class="mt-1 truncate text-[10.5px] text-[var(--text-muted)]" :title="entry.stage || entry.current_item">
