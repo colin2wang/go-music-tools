@@ -1,15 +1,15 @@
 {
-	"fixed": {
-		"file_version": "{{.Info.ProductVersion}}"
-	},
-	"info": {
-		"0000": {
-			"ProductVersion": "{{.Info.ProductVersion}}",
-			"CompanyName": "{{.Info.CompanyName}}",
-			"FileDescription": "{{.Info.ProductName}}",
-			"LegalCopyright": "{{.Info.Copyright}}",
-			"ProductName": "{{.Info.ProductName}}",
-			"Comments": "{{.Info.Comments}}"
-		}
-	}
+  "fixed": {
+    "file_version": "1.0.0"
+  },
+  "info": {
+    "0409": {
+      "ProductVersion": "1.0.0",
+      "CompanyName": "go-music-tools",
+      "FileDescription": "音乐下载与整理工作台",
+      "LegalCopyright": "(c) 2026, go-music-tools",
+      "ProductName": "Music Tools",
+      "Comments": "Go + Wails + Vue + TypeScript"
+    }
+  }
 }

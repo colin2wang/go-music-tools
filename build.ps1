@@ -53,19 +53,20 @@ Write-Host "[build] Step 3/4: frontend built and $DistIndex verified."
 Write-Host ""
 
 # --- Step 4: build desktop app --------------------------------------------
-# Prefer Wails CLI when available; otherwise fall back to plain go build.
+# Prefer the Wails v3 CLI when available; otherwise fall back to plain go build
+# (production + desktop tags are required by the Wails v3 runtime).
 Write-Host "[build] Step 4/4: building desktop app..."
 
-$wails = Get-Command wails -ErrorAction SilentlyContinue
-if ($wails) {
-    Write-Host "[build] wails CLI detected, running 'wails build'..."
-    & wails build
+$wails3 = Get-Command wails3 -ErrorAction SilentlyContinue
+if ($wails3) {
+    Write-Host "[build] wails3 CLI detected, running 'wails3 task build'..."
+    & wails3 task build PRODUCTION=true
     if ($LASTEXITCODE -ne 0) {
-        Fail "wails build failed with exit code $LASTEXITCODE."
+        Fail "wails3 task build failed with exit code $LASTEXITCODE."
     }
 } else {
-    Write-Host "[build] wails CLI not found, falling back to 'go build'..."
-    & go build -ldflags="-H windowsgui" -o $OutputPath .
+    Write-Host "[build] wails3 CLI not found, falling back to 'go build'..."
+    & go build -tags production,desktop -ldflags="-H windowsgui" -o $OutputPath .
     if ($LASTEXITCODE -ne 0) {
         Fail "go build failed with exit code $LASTEXITCODE."
     }

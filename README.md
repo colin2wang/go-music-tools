@@ -2,7 +2,7 @@
 
 English| [简体中文](README.zh-CN.md)
 
-![Go](https://img.shields.io/badge/Go-1.27+-00ADD8?logo=go&logoColor=white) ![Wails](https://img.shields.io/badge/Wails-v2-red?logo=wails&logoColor=white) ![Vue](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white) ![Tailwind_CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?logo=tailwindcss&logoColor=white)
+![Go](https://img.shields.io/badge/Go-1.27+-00ADD8?logo=go&logoColor=white) ![Wails](https://img.shields.io/badge/Wails-v3-red?logo=wails&logoColor=white) ![Vue](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white) ![Tailwind_CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?logo=tailwindcss&logoColor=white)
 
 A desktop workbench for music downloading and library organization, fully rewritten from
 `python_uv_cloud_music`. The main window keeps a global log panel always available, and the
@@ -27,23 +27,23 @@ configuration is stored in YAML and editable visually on the Settings page.
 - Go 1.26+
 - Node.js 18+ / pnpm 9.x (`frontend/pnpm-lock.yaml` is provided in the repository)
 - Windows: WebView2 Runtime (usually preinstalled)
-- Wails CLI (optional, for `wails dev` / `wails build`; the build script falls back to plain
-  `go build` when it is missing)
+- Wails v3 CLI (optional, for `wails3 dev` / `wails3 task build`; the build script falls back to plain
+  `go build -tags production,desktop` when it is missing)
 
 Install the CLI:
 
 ```bash
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
 ```
 
 ## Development
 
 ```bash
 pnpm --dir frontend install --frozen-lockfile
-wails dev
+wails3 dev
 ```
 
-`wails dev` starts the Vite dev server and the Go window together, with frontend hot reload.
+`wails3 dev` starts the Vite dev server and the Go window together, with frontend hot reload.
 
 ## Build
 
@@ -55,16 +55,16 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1
 
 The script runs in order: precheck `pnpm` / `go` → `pnpm --dir frontend install --frozen-lockfile`
 → `pnpm --dir frontend run build` (and verifies `frontend/dist/index.html`) → desktop binary
-compilation. When the `wails` CLI is detected it runs `wails build`; otherwise it falls back to
-`go build -ldflags="-H windowsgui" -o build/bin/go-music-tools.exe .`.
+compilation. When the `wails3` CLI is detected it runs `wails3 task build`; otherwise it falls back to
+`go build -tags production,desktop -ldflags="-H windowsgui" -o build/bin/go-music-tools.exe .`.
 Both branches produce `build/bin/go-music-tools.exe`, and any failed step prints an English
 error and exits non-zero.
 
-Manual build with the Wails CLI:
+Manual build with the Wails v3 CLI (build orchestration lives in `Taskfile.yml`):
 
 ```bash
 pnpm --dir frontend run build
-wails build
+wails3 task build
 ```
 
 Without the Wails CLI, build the frontend first and compile with Go directly (embeds
@@ -72,7 +72,7 @@ Without the Wails CLI, build the frontend first and compile with Go directly (em
 
 ```bash
 pnpm --dir frontend run build
-go build -ldflags="-H windowsgui" -o go-music-tools.exe .
+go build -tags production,desktop -ldflags="-H windowsgui" -o go-music-tools.exe .
 ```
 
 ## Configuration
@@ -110,8 +110,8 @@ docs/migration-notes.md   Python → Go migration mapping and API contracts
 
 Backend business packages do not import the Wails runtime; the event emitter is injected by
 `app.go`, so `go test ./...` runs standalone. The frontend calls bindings via
-`window.go.main.App.*` and subscribes to `log:batch`, `task:progress`, `task:item`,
-`task:done`, `config:changed` events via `window.runtime.EventsOn`; `task:item` pushes
+`@wailsio/runtime`'s `Call.ByName("main.App.*")` and subscribes to `log:batch`, `task:progress`,
+`task:item`, `task:done`, `config:changed` events via `Events.On`; `task:item` pushes
 track / directory results one by one for live progress tables.
 
 ## Disclaimer

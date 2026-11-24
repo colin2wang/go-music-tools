@@ -1,3 +1,5 @@
+import { Events } from '@wailsio/runtime'
+
 export const EventNames = {
   LOG_BATCH: 'log:batch',
   TASK_PROGRESS: 'task:progress',
@@ -10,30 +12,17 @@ export const EventNames = {
 
 type Handler<T> = (payload: T) => void
 
-/** 订阅 Wails 事件，返回取消订阅函数。浏览器预览时静默降级。 */
+/** 订阅 Wails 事件，返回取消订阅函数。浏览器预览时收不到事件但不会抛错。 */
 export function on<T>(event: string, handler: Handler<T>): () => void {
-  const rt = (window as unknown as { runtime?: {
-    EventsOn: (name: string, cb: (...data: unknown[]) => void) => unknown
-    EventsOff: (name: string) => void
-  } }).runtime
-  if (!rt || typeof rt.EventsOn !== 'function') {
-    return () => {}
-  }
-  const off = rt.EventsOn(event, (...data: unknown[]) => {
-    handler(data[0] as T)
-  })
+  // v3 回调收到 WailsEvent 对象，payload 在 event.data 上（v2 是 (...data) 取 data[0]）。
+  const off = Events.On(event, (e: { data?: unknown }) => handler(e?.data as T))
   return () => {
     if (typeof off === 'function') {
-      ;(off as () => void)()
-    } else {
-      rt.EventsOff(event)
+      off()
     }
   }
 }
 
 export function emit<T>(event: string, payload: T): void {
-  const rt = (window as unknown as { runtime?: { EventsEmit: (name: string, ...data: unknown[]) => void } }).runtime
-  if (rt && typeof rt.EventsEmit === 'function') {
-    rt.EventsEmit(event, payload)
-  }
+  void Events.Emit(event, payload)
 }

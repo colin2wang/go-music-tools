@@ -6,9 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"go-music-tools/internal/bindings"
 	"go-music-tools/internal/config"
@@ -30,20 +28,14 @@ func run() error {
 	root := appRoot()
 	store := config.NewStore(filepath.Join(root, "config.yml"))
 
-	// wails build 生成绑定时会以 -tags bindings 编译并执行本程序（不启动窗口），
-	// 该模式下跳过磁盘副作用：不迁移/写出 config.yml，日志目录指向临时目录，
-	// 避免构建过程在项目根目录生成 config.yml 与 logs/。
-	var hub *logx.Hub
-	var err error
-	if bindingGeneration {
-		hub, err = logx.NewHub(store.Get().Logging, os.TempDir())
-	} else {
-		migrateLegacyYAML(root)
-		if err = store.Load(); err != nil {
-			return fmt.Errorf("加载配置: %w", err)
-		}
-		hub, err = logx.NewHub(store.Get().Logging, root)
+	// v3 绑定生成为纯静态分析（wails3 generate bindings），不执行本程序，
+	// 不存在 v2 时代构建期产出 config.yml / logs/ 的问题。
+	migrateLegacyYAML(root)
+	if err := store.Load(); err != nil {
+		return fmt.Errorf("加载配置: %w", err)
 	}
+
+	hub, err := logx.NewHub(store.Get().Logging, root)
 	if err != nil {
 		return fmt.Errorf("初始化日志: %w", err)
 	}
@@ -61,22 +53,29 @@ func run() error {
 	}
 	defer svc.Close()
 
-	app := NewApp(svc, hub)
-
-	return wails.Run(&options.App{
-		Title:     "Music Tools · 音乐工作台",
-		Width:     1440,
-		Height:    900,
-		MinWidth:  1024,
-		MinHeight: 680,
-		AssetServer: &assetserver.Options{
-			Assets: assets,
+	app := application.New(application.Options{
+		Name: "Music Tools",
+		Services: []application.Service{
+			application.NewService(NewApp(svc, hub)),
 		},
-		BackgroundColour: &options.RGBA{R: 11, G: 16, B: 32, A: 1},
-		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
-		Bind:             []interface{}{app},
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
+		},
 	})
+
+	app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:            "Music Tools · 音乐工作台",
+		Width:            1440,
+		Height:           900,
+		MinWidth:         1024,
+		MinHeight:        680,
+		BackgroundColour: application.NewRGB(11, 16, 32),
+	})
+
+	if err := app.Run(); err != nil {
+		return fmt.Errorf("运行应用: %w", err)
+	}
+	return nil
 }
 
 func appRoot() string {

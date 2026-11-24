@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文
 
-![Go](https://img.shields.io/badge/Go-1.27+-00ADD8?logo=go&logoColor=white) ![Wails](https://img.shields.io/badge/Wails-v2-red?logo=wails&logoColor=white) ![Vue](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white) ![Tailwind_CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?logo=tailwindcss&logoColor=white)
+![Go](https://img.shields.io/badge/Go-1.27+-00ADD8?logo=go&logoColor=white) ![Wails](https://img.shields.io/badge/Wails-v3-red?logo=wails&logoColor=white) ![Vue](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white) ![Tailwind_CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?logo=tailwindcss&logoColor=white)
 
 音乐下载与整理桌面工作台，全量重写自
 `python_uv_cloud_music`。主界面常驻全局日志窗口，配置以 YAML 保存并可在「设置」页可视化修改。
@@ -22,22 +22,22 @@
 - Go 1.26+
 - Node.js 18+ / pnpm 9.x（仓库已提供 `frontend/pnpm-lock.yaml`）
 - Windows：WebView2 Runtime（一般系统已内置）
-- Wails CLI（可选，用于 `wails dev` / `wails build`；缺失时构建脚本自动回退 `go build`）
+- Wails v3 CLI（可选，用于 `wails3 dev` / `wails3 task build`；缺失时构建脚本自动回退 `go build -tags production,desktop`）
 
 安装 CLI：
 
 ```bash
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
 ```
 
 ## 开发运行
 
 ```bash
 pnpm --dir frontend install --frozen-lockfile
-wails dev
+wails3 dev
 ```
 
-`wails dev` 会同时启动 Vite 开发服务器与 Go 窗口，前端热更新可用。
+`wails3 dev` 会同时启动 Vite 开发服务器与 Go 窗口，前端热更新可用。
 
 ## 构建
 
@@ -49,22 +49,22 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1
 
 脚本依次执行：预检 `pnpm` / `go` → `pnpm --dir frontend install --frozen-lockfile`
 → `pnpm --dir frontend run build`（并校验 `frontend/dist/index.html`）→ 桌面程序编译。
-检测到 `wails` CLI 时执行 `wails build`；否则自动回退
-`go build -ldflags="-H windowsgui" -o build/bin/go-music-tools.exe .`。
+检测到 `wails3` CLI 时执行 `wails3 task build`；否则自动回退
+`go build -tags production,desktop -ldflags="-H windowsgui" -o build/bin/go-music-tools.exe .`。
 两条分支的产物都位于 `build/bin/go-music-tools.exe`，任一阶段失败都会打印英文错误并以非零退出码终止。
 
-手动分步构建（使用 Wails CLI）：
+手动分步构建（使用 Wails v3 CLI，构建编排由 `Taskfile.yml` 承担）：
 
 ```bash
 pnpm --dir frontend run build
-wails build
+wails3 task build
 ```
 
 没有 Wails CLI 时也可以先构建前端再用 Go 直接编译（嵌入 `frontend/dist`）：
 
 ```bash
 pnpm --dir frontend run build
-go build -ldflags="-H windowsgui" -o go-music-tools.exe .
+go build -tags production,desktop -ldflags="-H windowsgui" -o go-music-tools.exe .
 ```
 
 ## 配置
@@ -98,9 +98,9 @@ docs/migration-notes.md   Python → Go 迁移映射与 API 契约
 ```
 
 后端业务包不 import Wails runtime，事件发射器由 `app.go` 注入，因此 `go test ./...`
-可独立运行。前端通过 `window.go.main.App.*` 调用绑定方法，通过 `window.runtime.EventsOn`
-订阅 `log:batch`、`task:progress`、`task:item`、`task:done`、`config:changed` 事件；
-其中 `task:item` 逐条推送曲目 / 目录结果，供进度表实时刷新。
+可独立运行。前端通过 `@wailsio/runtime` 的 `Call.ByName("main.App.*")` 调用绑定方法，
+通过 `Events.On` 订阅 `log:batch`、`task:progress`、`task:item`、`task:done`、
+`config:changed` 事件；其中 `task:item` 逐条推送曲目 / 目录结果，供进度表实时刷新。
 
 ## 免责声明
 

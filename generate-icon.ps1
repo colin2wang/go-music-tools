@@ -7,7 +7,7 @@
     The SVG is the single source of truth for the app icon. This script runs the
     Go converter (tools/genicon) which rasterizes a restricted SVG subset with the
     standard library only, then writes:
-      - build/appicon.png        (used by `wails build` for the app bundle icon)
+      - build/appicon.png        (used by `wails3 build` for the app bundle icon)
       - build/windows/icon.ico   (used by the Windows executable / taskbar)
 
 .PARAMETER Svg
@@ -81,7 +81,7 @@ try {
         }
     }
 
-    Write-Host "`nNote: run .\build.ps1 afterwards so wails picks up the new build/appicon.png" -ForegroundColor DarkGray
+    Write-Host "`nNote: run .\build.ps1 afterwards so wails3 picks up the new build/appicon.png" -ForegroundColor DarkGray
 } finally {
     Pop-Location
 }

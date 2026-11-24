@@ -1,11 +1,13 @@
 
 # Wails
 build/bin
+.task/
 
 # Node
 frontend/dist/
 frontend/node_modules/
 frontend/wailsjs/
+frontend/bindings/
 frontend/package.json.md5
 
 logs/
@@ -15,9 +17,9 @@ downloads/
 .DS_Store
 
 # 本机用户配置（首次启动自动生成）
-config.yml
+/config.yml
 # 运行状态（上次下载偏好、限流时间戳）
-state.yml
+/state.yml
 
 # IDEs
 .idea/
