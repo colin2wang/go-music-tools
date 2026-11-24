@@ -31,23 +31,23 @@ func (a *App) ServiceName() string { return "App" }
 func (a *App) ServiceStartup(_ context.Context, _ application.ServiceOptions) error {
 	app := application.Get()
 
-	a.svc.SetEmitter(func(event string, payload any) {
+	a.svc.Hooks.SetEmitter(func(event string, payload any) {
 		// 应用关闭后不再向已销毁的 WebView 推送事件，避免 shutdown 阶段阻塞退出。
 		if !a.quitting.Load() {
 			app.Event.Emit(event, payload)
 		}
 	})
-	a.svc.SetDirectoryDialog(func(title string) (string, error) {
+	a.svc.Hooks.SetDirectoryDialog(func(title string) (string, error) {
 		return app.Dialog.OpenFile().SetTitle(title).
 			CanChooseFiles(false).CanChooseDirectories(true).
 			PromptForSingleSelection()
 	})
-	a.svc.SetFileDialog(func(title string) (string, error) {
+	a.svc.Hooks.SetFileDialog(func(title string) (string, error) {
 		return app.Dialog.OpenFile().SetTitle(title).
 			CanChooseFiles(true).CanChooseDirectories(false).
 			PromptForSingleSelection()
 	})
-	a.svc.SetSaveDialog(func(title, defaultName string) (string, error) {
+	a.svc.Hooks.SetSaveDialog(func(title, defaultName string) (string, error) {
 		return app.Dialog.SaveFile().SetMessage(title).
 			SetFilename(defaultName).
 			PromptForSingleSelection()

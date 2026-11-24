@@ -24,16 +24,66 @@ type Deps struct {
 	Logger *slog.Logger
 }
 
-// Service 承载全部 Wails 绑定方法。它不 import Wails runtime：事件发射器与文件对话框
-// 由 main 包在 startup 时注入，因此本包可独立单元测试。
-type Service struct {
-	deps Deps
-
+// Hooks 承载由 main 包在 startup 时注入的事件发射器与文件对话框回调。
+// 它必须是 Service 的普通字段而非内嵌：Service 的导出方法会经 App 内嵌提升进
+// Wails 绑定面，而函数类型参数无法经 encoding/json 序列化，会触发
+// wails3 generate bindings 的 "function types are not supported" 警告。
+type Hooks struct {
 	mu         sync.RWMutex
 	emit       func(string, any)
 	dirDialog  func(string) (string, error)
 	fileDialog func(string) (string, error)
 	saveDialog func(string, string) (string, error)
+}
+
+// SetEmitter 注入事件发射器；注入前 Emit 为空操作。
+func (h *Hooks) SetEmitter(fn func(string, any)) {
+	h.mu.Lock()
+	h.emit = fn
+	h.mu.Unlock()
+}
+
+// Emitter 返回当前事件发射器，未注入时为 nil。
+func (h *Hooks) Emitter() func(string, any) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.emit
+}
+
+// SetDirectoryDialog 注入目录选择对话框。
+func (h *Hooks) SetDirectoryDialog(fn func(string) (string, error)) {
+	h.mu.Lock()
+	h.dirDialog = fn
+	h.mu.Unlock()
+}
+
+// SetFileDialog 注入文件选择对话框。
+func (h *Hooks) SetFileDialog(fn func(string) (string, error)) {
+	h.mu.Lock()
+	h.fileDialog = fn
+	h.mu.Unlock()
+}
+
+// SetSaveDialog 注入保存对话框。
+func (h *Hooks) SetSaveDialog(fn func(string, string) (string, error)) {
+	h.mu.Lock()
+	h.saveDialog = fn
+	h.mu.Unlock()
+}
+
+// Dialogs 返回目录 / 文件 / 保存三个对话框回调，未注入的项为 nil。
+func (h *Hooks) Dialogs() (func(string) (string, error), func(string) (string, error), func(string, string) (string, error)) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.dirDialog, h.fileDialog, h.saveDialog
+}
+
+// Service 承载全部 Wails 绑定方法。它不 import Wails runtime：事件发射器与文件对话框
+// 由 main 包在 startup 时注入，因此本包可独立单元测试。
+type Service struct {
+	deps Deps
+
+	Hooks *Hooks
 
 	tasks *task.Manager
 
@@ -45,7 +95,10 @@ func NewService(d Deps) (*Service, error) {
 	if d.Config == nil || d.Logs == nil || d.Cache == nil || d.Logger == nil {
 		return nil, fmt.Errorf("绑定服务缺少必要依赖")
 	}
-	s := &Service{deps: d, tasks: task.NewManager(d.Logger)}
+	s := &Service{deps: d, tasks: task.NewManager(d.Logger), Hooks: &Hooks{}}
+	// 事件源统一走 s.Emit 动态读取 Hooks 中已注入的发射器，注入前为空操作。
+	s.tasks.SetEmitter(task.EmitFunc(s.Emit))
+	d.Logs.SetEmitter(logx.EmitFunc(s.Emit))
 	s.tasks.SetOnFinish(func(done task.Done) {
 		_ = d.Cache.AddTaskHistory(model.TaskRecord{
 			Kind: done.Kind, Success: done.Success, Skipped: done.Skipped, Failed: done.Failed,
@@ -63,36 +116,8 @@ func NewService(d Deps) (*Service, error) {
 	return s, nil
 }
 
-func (s *Service) SetEmitter(fn func(string, any)) {
-	s.mu.Lock()
-	s.emit = fn
-	s.mu.Unlock()
-	s.deps.Logs.SetEmitter(logx.EmitFunc(fn))
-	s.tasks.SetEmitter(task.EmitFunc(fn))
-}
-
-func (s *Service) SetDirectoryDialog(fn func(string) (string, error)) {
-	s.mu.Lock()
-	s.dirDialog = fn
-	s.mu.Unlock()
-}
-
-func (s *Service) SetFileDialog(fn func(string) (string, error)) {
-	s.mu.Lock()
-	s.fileDialog = fn
-	s.mu.Unlock()
-}
-
-func (s *Service) SetSaveDialog(fn func(string, string) (string, error)) {
-	s.mu.Lock()
-	s.saveDialog = fn
-	s.mu.Unlock()
-}
-
 func (s *Service) Emit(event string, payload any) {
-	s.mu.RLock()
-	fn := s.emit
-	s.mu.RUnlock()
+	fn := s.Hooks.Emitter()
 	if fn != nil {
 		fn(event, payload)
 	}
@@ -115,12 +140,9 @@ func (s *Service) httpClient() *httpclient.Client {
 	return httpclient.New(c.Network, c.API.InsecureSkipVerify, s.deps.Logger)
 }
 
-// Start 保留原有导出签名以兼容 Wails 绑定生成；内部提交统一走 start。
-func (s *Service) Start(kind string, total int, fn task.TaskFunc) (string, error) {
-	return s.start(kind, total, fn)
-}
-
 // start 提交任务，可附加 task.WithRetry 等选项。
+// 不提供接收 task.TaskFunc 的导出方法：函数类型无法经 encoding/json 序列化，
+// 导出会触发 wails3 generate bindings 的 "function types are not supported" 警告。
 func (s *Service) start(kind string, total int, fn task.TaskFunc, opts ...task.StartOption) (string, error) {
 	return s.tasks.Start(kind, total, fn, opts...)
 }
@@ -153,9 +175,7 @@ func (s *Service) Close() error {
 }
 
 func (s *Service) dialogs() (func(string) (string, error), func(string) (string, error), func(string, string) (string, error)) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.dirDialog, s.fileDialog, s.saveDialog
+	return s.Hooks.Dialogs()
 }
 
 // OpenPath 用系统文件管理器打开目录或文件所在位置。
