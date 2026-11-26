@@ -1,34 +1,54 @@
 # Music Tools
 
-English| [简体中文](README.zh-CN.md)
+English | [简体中文](README.zh-CN.md)
 
 ![Go](https://img.shields.io/badge/Go-1.27+-00ADD8?logo=go&logoColor=white) ![Wails](https://img.shields.io/badge/Wails-v3-red?logo=wails&logoColor=white) ![Vue](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white) ![Tailwind_CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?logo=tailwindcss&logoColor=white)
 
-A desktop workbench for music downloading and library organization, fully rewritten from
-`python_uv_cloud_music`. The main window keeps a global log panel always available, and the
-configuration is stored in YAML and editable visually on the Settings page.
+A desktop workbench for music downloading and library organization. All downloads run through
+APIs (no third-party desktop client required). The main window keeps a global log panel and a
+task board always available, and the configuration is stored in YAML and editable visually on
+the Settings page.
 
 ## Features
 
-- NetEase single / album / playlist download: ID or share link, 7 quality levels, selected track
-  indexes, skip existing files, live progress
-- Music search (NetEase proxy `/Search`) plus OO Music search, details, quality comparison, and
-  single / batch download
+### Download
+
+- Single / album / playlist download by resource ID or share link, 7 quality levels
+  (`standard` → `jymaster`), selected track indexes, skip existing files, live progress
+- OO Music search, song details, quality comparison, single and batch download
+- Fallback resolution channel: NextMusic V2 (switchable, with retry on failure)
+- Remembers the last download preferences (kind / quality / indexes) across restarts
+
+### Library organization
+
 - Automatic organization: album / playlist directories, `album_info.txt` / `playlist_info.txt`,
   cover art, LRC lyrics, ID3 / Vorbis / MP4 tags
-- Existing-library tools: lyrics repair, cover re-download, artist splitting, metadata completion
-- Fallback resolution channel: NextMusic V2 (switchable, with retry on failure)
-- Global log panel: live logs, level filter, keyword search, clear, export, open log directory
-- Visual configuration: grouped dynamic forms, field validation, save / reload / reset, YAML
-  import & export, effective immediately
+- Existing-library tools: lyrics repair, cover re-download, artist splitting, metadata
+  completion — run batch over the first-level subdirectories of a chosen folder
+
+### Task queue
+
+- Two independent FIFO channels (`oomusic:*` vs `download:*` / `library:*`): strict serial
+  within a channel, parallel across channels; submission returns a `task_id` immediately
+- Task board: live progress, per-item results, queued-task removal, cancel all or by ID,
+  retry failed items only; the in-process registry keeps the most recent 50 tasks
+
+### Logs, cache & settings
+
+- Global log panel: live logs, level filter, keyword search, clear, export, open log directory;
+  runtime log-level switch without touching `config.yml`
+- Cache view: inspect and clear per-region caches (OO search / details, preferences, download
+  history) with formatted JSON details
+- Visual configuration: grouped dynamic forms rendered from the backend schema, field
+  validation, save / reload / reset, YAML import & export, effective immediately
 
 ## Requirements
 
 - Go 1.26+
 - Node.js 18+ / pnpm 9.x (`frontend/pnpm-lock.yaml` is provided in the repository)
 - Windows: WebView2 Runtime (usually preinstalled)
-- Wails v3 CLI (optional, for `wails3 dev` / `wails3 task build`; the build script falls back to plain
-  `go build -tags production,desktop` when it is missing)
+- Wails v3 CLI (optional, for `wails3 dev` / `wails3 task build`; the build script falls back to
+  plain `go build -tags production,desktop` when it is missing)
 
 Install the CLI:
 
@@ -55,8 +75,8 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1
 
 The script runs in order: precheck `pnpm` / `go` → `pnpm --dir frontend install --frozen-lockfile`
 → `pnpm --dir frontend run build` (and verifies `frontend/dist/index.html`) → desktop binary
-compilation. When the `wails3` CLI is detected it runs `wails3 task build`; otherwise it falls back to
-`go build -tags production,desktop -ldflags="-H windowsgui" -o build/bin/go-music-tools.exe .`.
+compilation. When the `wails3` CLI is detected it runs `wails3 task build`; otherwise it falls back
+to `go build -tags production,desktop -ldflags="-H windowsgui" -o build/bin/go-music-tools.exe .`.
 Both branches produce `build/bin/go-music-tools.exe`, and any failed step prints an English
 error and exits non-zero.
 
@@ -96,23 +116,25 @@ build.ps1                 One-click root build script (pnpm + Wails / go build)
 internal/config           YAML config, schema metadata, atomic writes
 internal/logx             slog fan-out, rotating files, ring buffer, event push
 internal/store            go-cache in-memory preferences and caches
-internal/httpclient       UA / retry / rate limiting
+internal/httpclient       UA / retry / rate limiting / TLS fingerprinting
 internal/api              NetEase, NextMusic V2, OO Music clients
 internal/music            Metadata, naming, index parsing, download, organizing
 internal/tag              MP3 / FLAC / MP4 tag read/write
-internal/library          Four existing-library repair flows
+internal/library          Existing-library repair flows
 internal/oomusic          OO Music business service
-internal/task             Task cancellation and progress
+internal/task             Task queue manager (two channels), progress, retry, events
 internal/bindings         Wails binding services (no Wails runtime dependency)
-frontend/src              Vue 3 + TypeScript UI
+frontend/src              Vue 3 + TypeScript UI (views: Download, OO Music, Library
+                          Tools, Cache, Settings; i18n zh/en)
 docs/migration-notes.md   Python → Go migration mapping and API contracts
 ```
 
 Backend business packages do not import the Wails runtime; the event emitter is injected by
 `app.go`, so `go test ./...` runs standalone. The frontend calls bindings via
-`@wailsio/runtime`'s `Call.ByName("main.App.*")` and subscribes to `log:batch`, `task:progress`,
-`task:item`, `task:done`, `config:changed` events via `Events.On`; `task:item` pushes
-track / directory results one by one for live progress tables.
+`@wailsio/runtime`'s `Call.ByName("main.App.*")` and subscribes to `log:batch`,
+`task:progress`, `task:item`, `task:done`, `task:queued`, `config:changed` events via
+`Events.On`; the task board is driven by the registry snapshot pushed with `task:queued` and
+refetched through `GetTaskBoard`.
 
 ## Disclaimer
 
